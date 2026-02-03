@@ -4,6 +4,7 @@ services:
     name: securescan-redis
     region: oregon
     plan: free
+    ipAllowList: []
 
   # ---------------- API ----------------
   - type: web
@@ -115,7 +116,6 @@ services:
     env: python
     region: oregon
     plan: free
-    ipAllowList: []
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
