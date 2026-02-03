@@ -8,7 +8,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://your-backend-url.railway.app/api/:splat"
+  to = "https://securescan-api.fly.dev/api/:splat"
   status = 200
   force = true
 
