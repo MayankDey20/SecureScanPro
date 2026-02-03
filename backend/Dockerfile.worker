@@ -1,4 +1,5 @@
-# SecureScan Pro - Backend Dockerfile
+# SecureScan Pro - Celery Worker Dockerfile
+# For Fly.io worker deployment
 
 FROM python:3.11-slim
 
@@ -30,12 +31,5 @@ RUN mkdir -p /app/logs /app/uploads /app/reports
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Expose port (Fly.io uses 8080 internally)
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Run application (Fly.io uses port 8080)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
+# Run Celery worker
+CMD ["celery", "-A", "app.celery_worker:celery_app", "worker", "--loglevel=info", "--concurrency=2"]
