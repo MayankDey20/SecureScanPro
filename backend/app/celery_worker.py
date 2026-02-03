@@ -17,6 +17,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    # Keep startup retry behavior consistent with Celery < 6.0
+    broker_connection_retry_on_startup=True,
     task_routes={
         "app.tasks.scan_tasks.*": {"queue": "scans"},
     },
