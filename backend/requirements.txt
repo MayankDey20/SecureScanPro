@@ -44,8 +44,8 @@ validators==0.22.0
 python-whois==0.8.0
 
 # Data Processing
-pandas==2.1.4
-numpy==1.26.2
+pandas==2.2.3
+numpy==1.26.4
 
 # WebSocket
 websockets==12.0
