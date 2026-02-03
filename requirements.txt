@@ -1,0 +1,86 @@
+# SecureScan Pro - Backend Requirements
+
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Database
+supabase==2.10.0
+redis==5.0.1
+
+# Security & Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.6
+
+# HTTP & Networking
+httpx==0.27.2
+requests==2.31.0
+aiohttp==3.9.1
+urllib3==2.1.0
+
+# Scanning Tools
+python-nmap==0.7.1
+dnspython==2.4.2
+cryptography==41.0.7
+pyOpenSSL==23.3.0
+certifi==2023.11.17
+
+# HTML/Web Parsing
+beautifulsoup4==4.12.2
+lxml==4.9.3
+html5lib==1.1
+
+# Async & Background Tasks
+celery==5.3.4
+kombu==5.3.4
+
+# Vulnerability Detection
+validators==0.22.0
+python-whois==0.8.0
+
+# Data Processing
+pandas==2.2.3
+numpy==1.26.4
+
+# WebSocket
+websockets==12.0
+
+# PDF Report Generation
+reportlab==4.0.8
+
+# Cron Expression Parsing
+croniter==2.0.1
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+python-dateutil==2.8.2
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# Code Quality
+black==23.12.0
+flake8==6.1.0
+mypy==1.7.1
+pylint==3.0.3
+
+# Monitoring & Logging
+python-json-logger==2.0.7
+structlog==23.2.0
+
+# Rate Limiting
+slowapi==0.1.9
+
+# Celery Monitoring
+flower==2.0.1
+
+# Environment
+python-decouple==3.8
