@@ -1,3 +1,8 @@
+databases:
+  - name: securescan-redis
+    plan: free
+    ipAllowList: []
+
 services:
   - type: web
     name: securescan-api
@@ -118,7 +123,3 @@ services:
           name: securescan-redis
           property: connectionString
 
-databases:
-  - name: securescan-redis
-    plan: free
-    ipAllowList: []
