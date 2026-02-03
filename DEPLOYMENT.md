@@ -34,14 +34,14 @@ This application requires:
    ```
    Name: worker
    Root Directory: backend
-   Start Command: celery -A app.celery_worker worker --loglevel=info
+   Start Command: celery -A app.celery_worker:celery_app worker --loglevel=info
    ```
 
    **Service 3: Beat Scheduler**
    ```
    Name: beat
    Root Directory: backend
-   Start Command: celery -A app.celery_worker beat --loglevel=info
+   Start Command: celery -A app.celery_worker:celery_app beat --loglevel=info
    ```
 
    **Service 4: Redis**
@@ -64,7 +64,7 @@ This application requires:
 
 5. **Deploy** - Railway will automatically deploy all services
 
-6. **Get your API URL** - Copy the public URL from the API service (e.g., `https://api-production-xxxx.railway.app`)
+6. **Get your API URL** - Copy the public URL from the API service (e.g., `https://api-production-xxxx.railway.app`). For this project, the Railway API URL is `https://web-production-de12e.up.railway.app`.
 
 ### Step 2: Deploy Frontend to Netlify
 
@@ -83,14 +83,14 @@ This application requires:
 
 4. **Add environment variables** in Netlify dashboard:
    ```
-   VITE_API_URL=https://your-railway-api-url.railway.app/api/v1
+   VITE_API_URL=https://web-production-de12e.up.railway.app/api/v1
    VITE_SUPABASE_URL=your-supabase-url
    VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
 
 5. **Deploy** - Netlify will build and deploy your frontend
 
-6. **Update netlify.toml** - Edit line 10 with your Railway backend URL
+6. **Update netlify.toml** - Set the `/api/*` redirect to `https://web-production-de12e.up.railway.app/api/:splat`
 
 ---
 
