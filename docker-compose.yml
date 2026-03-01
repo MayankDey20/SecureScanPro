@@ -48,7 +48,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: securescan-worker
-    command: celery -A app.celery_worker worker --loglevel=info --concurrency=4
+    command: celery -A app.celery_worker worker --loglevel=info --concurrency=4 -Q scans,celery
     env_file:
       - ./backend/.env
     environment:
@@ -60,6 +60,12 @@ services:
       - ./backend/logs:/app/logs
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.celery_worker inspect ping --timeout 5 2>&1 | grep -q 'pong' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
     networks:
       - securescan-network
     restart: unless-stopped
@@ -81,6 +87,12 @@ services:
       - ./backend/app:/app/app
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD-SHELL", "cat /proc/1/cmdline | tr '\\0' ' ' | grep -q 'celery' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       - securescan-network
     restart: unless-stopped
@@ -138,6 +150,12 @@ services:
     depends_on:
       - redis
       - worker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     networks:
       - securescan-network
     restart: unless-stopped

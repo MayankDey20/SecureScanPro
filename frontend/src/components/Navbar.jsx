@@ -30,10 +30,10 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="nav-container">
-        <div className="nav-brand">
-          <i className="fas fa-shield-alt"></i>
-          <span className="brand-text">SecureScan <span className="brand-pro">Pro</span></span>
-        </div>
+        <Link to="/" className="nav-brand">
+          <img src="/pixel-shield.svg" alt="SecureScan logo" className="brand-logo" />
+          <span className="brand-text">SecureScan<span className="brand-pro">Pro</span></span>
+        </Link>
         <ul className="nav-menu">
           <li>
             <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>
@@ -57,12 +57,17 @@ const Navbar = () => {
           </li>
           <li>
             <Link to="/threat-intel" className={`nav-link ${isActive('/threat-intel') ? 'active' : ''}`}>
-              <i className="fas fa-shield-virus"></i> Threat Intel
+              <i className="fas fa-shield-virus"></i> Threat intel
             </Link>
           </li>
           <li>
             <Link to="/reports" className={`nav-link ${isActive('/reports') ? 'active' : ''}`}>
               <i className="fas fa-file-alt"></i> Reports
+            </Link>
+          </li>
+          <li>
+            <Link to="/symptom-checker" className={`nav-link ${isActive('/symptom-checker') ? 'active' : ''}`}>
+              <i className="fas fa-stethoscope"></i> Symptom Check
             </Link>
           </li>
         </ul>

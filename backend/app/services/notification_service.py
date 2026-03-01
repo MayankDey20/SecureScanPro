@@ -145,7 +145,12 @@ class NotificationService:
         if channels is None:
             channels = [NotificationType.IN_APP]  # Default to in-app
             
-            # Add configured channels
+            # Auto-enable email if SendGrid is configured in settings
+            from app.core.config import settings
+            if settings.SENDGRID_API_KEY and settings.SENDGRID_API_KEY != "your-sendgrid-api-key":
+                channels.append(NotificationType.EMAIL)
+
+            # Add configured channels from integrations table
             for integration in integrations:
                 int_type = integration.get("type")
                 if int_type in [t.value for t in NotificationType]:
@@ -267,19 +272,16 @@ class NotificationService:
             if not emails:
                 return True  # No emails to send
             
-            # Use configured email service or default
-            # This is a placeholder - integrate with actual email service
-            # Options: SendGrid, SES, Mailgun, SMTP
-            
-            email_service = config.get("service", "smtp") if config else "smtp"
-            
-            if email_service == "sendgrid":
-                return await self._send_sendgrid_email(emails, title, message, config)
-            elif email_service == "ses":
-                return await self._send_ses_email(emails, title, message, config)
+            # Use SENDGRID_API_KEY from settings if available, otherwise from integration config
+            from app.core.config import settings
+            api_key = (settings.SENDGRID_API_KEY 
+                       if settings.SENDGRID_API_KEY and settings.SENDGRID_API_KEY != "your-sendgrid-api-key"
+                       else (config or {}).get("api_key"))
+
+            if api_key:
+                return await self._send_sendgrid_email(emails, title, message, {"api_key": api_key, "from_email": settings.SENDGRID_FROM_EMAIL})
             else:
-                # Log for now - implement SMTP later
-                logger.info(f"Would send email to {emails}: {title}")
+                logger.info(f"SendGrid not configured — would send email to {emails}: {title}")
                 return True
             
         except Exception as e:

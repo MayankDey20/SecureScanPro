@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import logging
 import time
 import asyncio
@@ -21,7 +22,7 @@ from app.core.config import settings
 from app.core.websocket_manager import ws_manager, RedisPubSubManager
 from app.api.v1 import (
     auth, threats, scan, users, reports, analytics, ai,
-    scheduled_scans, teams, notifications, vulnerabilities
+    scheduled_scans, teams, notifications, vulnerabilities, symptom_checker
 )
 
 # Configure logging
@@ -77,6 +78,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Middleware Configuration
+
+# SlowAPI Rate Limiting Middleware (must be first)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS
 app.add_middleware(
@@ -168,43 +172,54 @@ app.include_router(scheduled_scans.router, prefix=settings.API_V1_STR)
 app.include_router(teams.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(vulnerabilities.router, prefix=settings.API_V1_STR)
+app.include_router(symptom_checker.router, prefix=settings.API_V1_STR)
 
 # WebSocket endpoint for real-time scan progress
 @app.websocket("/api/v1/scan/{scan_id}/live")
 async def websocket_scan_live(websocket: WebSocket, scan_id: str):
-    """WebSocket for live scan updates"""
+    """WebSocket for live scan updates — pushes DB state every 2s"""
     await ws_manager.connect(websocket, scan_id)
-    
-    # Subscribe to Redis channel for this scan
     await redis_pubsub.subscribe_to_scan(scan_id)
-    
+
     try:
-        # Send current progress if available
-        current_progress = ws_manager.get_progress(scan_id)
-        if current_progress:
-            await websocket.send_json(current_progress)
-        
-        # Keep connection alive and handle client messages
+        from app.core.supabase_client import get_supabase
+        sb = get_supabase()
+
         while True:
+            # --- pull current state directly from DB ---
             try:
-                # Wait for client messages (ping/pong or commands)
+                row = sb.table("scans").select(
+                    "status,progress,current_phase"
+                ).eq("id", scan_id).maybe_single().execute()
+                if row and row.data:
+                    d = row.data
+                    msg = {
+                        "scan_id":      scan_id,
+                        "status":       d.get("status", "queued"),
+                        "progress":     d.get("progress") or 0,
+                        "current_phase": d.get("current_phase") or "",
+                    }
+                    await websocket.send_json(msg)
+                    if d.get("status") in ("completed", "failed"):
+                        break
+            except Exception as db_err:
+                logger.warning(f"WS DB poll error: {db_err}")
+
+            # --- also drain any Redis pub/sub messages ---
+            in_mem = ws_manager.get_progress(scan_id)
+            if in_mem:
+                await websocket.send_json(in_mem)
+
+            # --- wait 2s, handle client pings in between ---
+            try:
                 data = await asyncio.wait_for(
-                    websocket.receive_json(),
-                    timeout=30.0  # Send keepalive every 30s
+                    websocket.receive_json(), timeout=2.0
                 )
-                
-                # Handle client commands
                 if data.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
-                elif data.get("type") == "get_progress":
-                    progress = ws_manager.get_progress(scan_id)
-                    if progress:
-                        await websocket.send_json(progress)
-                        
             except asyncio.TimeoutError:
-                # Send keepalive
-                await websocket.send_json({"type": "keepalive"})
-                
+                pass
+
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for scan {scan_id}")
     except Exception as e:

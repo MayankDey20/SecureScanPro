@@ -2,212 +2,219 @@ import { useState, useEffect } from 'react';
 import { scanAPI, aiAPI } from '../../services/api';
 import './Results.css';
 
+const sevClass = (s = '') => s.toLowerCase();
+
+const fmtDate = (raw) => {
+  if (!raw) return '—';
+  try {
+    return new Date(raw).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  } catch { return '—'; }
+};
+
 const Results = () => {
-  const [scans, setScans] = useState([]);
-  const [selectedScan, setSelectedScan] = useState(null);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [scans, setScans]             = useState([]);
+  const [selectedId, setSelectedId]   = useState(null);
+  const [results, setResults]         = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [openRows, setOpenRows]       = useState({});
+  const [aiResults, setAiResults]     = useState({});
   const [analyzingId, setAnalyzingId] = useState(null);
 
-  useEffect(() => {
-    loadScans();
-  }, []);
+  useEffect(() => { loadScans(); }, []);
 
   useEffect(() => {
-    if (selectedScan) {
-      loadResults(selectedScan);
-      setAiAnalysis(null); // Reset AI analysis when switching scans
+    if (selectedId) {
+      setResults(null);
+      setOpenRows({});
+      loadResults(selectedId);
     }
-  }, [selectedScan]);
+  }, [selectedId]);
 
   const loadScans = async () => {
     try {
       setLoading(true);
       const data = await scanAPI.list(0, 50);
       setScans(data);
-      if (data.length > 0 && !selectedScan) {
-        setSelectedScan(data[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load scans:', error);
+      if (data.length > 0) setSelectedId(data[0].id);
+    } catch (err) {
+      console.error('Failed to load scans:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadResults = async (scanId) => {
+  const loadResults = async (id) => {
     try {
-      const data = await scanAPI.getResults(scanId);
+      setResultsLoading(true);
+      const data = await scanAPI.getResults(id);
       setResults(data);
-    } catch (error) {
-      console.error('Failed to load results:', error);
+    } catch (err) {
+      console.error('Failed to load results:', err);
+    } finally {
+      setResultsLoading(false);
     }
   };
-  
+
+  const toggleRow = (id) =>
+    setOpenRows(prev => ({ ...prev, [id]: !prev[id] }));
+
   const handleAiAnalyze = async (finding) => {
     try {
       setAnalyzingId(finding.id);
-      setAiAnalysis(null);
       const analysis = await aiAPI.analyze(
-        finding.title, 
-        finding.description || "No specific description available.", 
+        finding.title,
+        finding.description || 'No description available.',
         finding.severity
       );
-      setAiAnalysis(analysis);
-    } catch (error) {
-      console.error("AI Analysis failed:", error);
-      alert("Failed to perform AI analysis.");
+      setAiResults(prev => ({ ...prev, [finding.id]: analysis }));
+    } catch (err) {
+      console.error('AI analysis failed:', err);
     } finally {
       setAnalyzingId(null);
     }
   };
 
-  const closeAiModal = () => {
-    setAiAnalysis(null);
-  }
+  const selectedScan = scans.find(s => s.id === selectedId);
+  const score   = results?.securityScore ?? selectedScan?.security_score ?? null;
+  const findings = results?.findings || [];
+  const vulns   = results?.vulnerabilities || {};
+  const criticalCount = vulns.critical ?? findings.filter(f => f.severity?.toLowerCase() === 'critical').length;
 
-  if (loading) {
-    return <div className="loading">Loading results...</div>;
-  }
+  const totalVulns = Object.values(vulns).reduce((a, n) => a + (Number(n) || 0), 0) || findings.length;
+
+  if (loading) return <div className="rs-loading">Loading scan results…</div>;
 
   return (
     <section className="results-section">
-      <div className="section-header">
-        <h1 className="section-title">Scan Results</h1>
-        <p className="section-subtitle">Detailed analysis of discovered vulnerabilities</p>
-      </div>
-      
-      {/* AI Analysis Modal */}
-      {aiAnalysis && (
-        <div className="ai-modal-overlay">
-          <div className="ai-modal">
-            <div className="ai-modal-header">
-              <h2>🤖 {aiAnalysis.classification?.detected_type || "AI Analysis"}</h2>
-              <button className="close-btn" onClick={closeAiModal}>×</button>
-            </div>
-            <div className="ai-modal-content">
-              <div className="ai-score-card">
-                 <div className="score-ring" style={{"--score": aiAnalysis.risk_assessment?.calculated_risk_score}}>
-                    <span>{aiAnalysis.risk_assessment?.calculated_risk_score}</span>
-                    <small>Risk Score</small>
-                 </div>
-                 <div className="ai-summary">
-                    <p><strong>Impact:</strong> {aiAnalysis.risk_assessment?.predicted_impact}</p>
-                    <p><strong>Confidence:</strong> {(aiAnalysis.classification?.confidence_score * 100).toFixed(0)}%</p>
-                 </div>
-              </div>
-              
-              <div className="ai-section">
-                <h3>💡 Remediation Strategy</h3>
-                <p className="remediation-text">{aiAnalysis.remediation?.suggested_action}</p>
-              </div>
+      <h1 className="rs-title">Scan Results</h1>
+      <p className="rs-subtitle">Detailed analysis of discovered vulnerabilities</p>
 
-              <div className="ai-section">
-                <h3>🔍 Detailed Insights</h3>
-                <p>{aiAnalysis.explanation}</p>
-              </div>
-              
-              <div className="ai-footer">
-                <small>Analysis by {aiAnalysis.ai_model} at {aiAnalysis.analysis_timestamp}</small>
-              </div>
-            </div>
+      <div className="rs-layout">
+
+        {/* ── Sidebar ── */}
+        <aside className="rs-sidebar">
+          <div className="rs-sidebar-head">
+            <span className="rs-sidebar-col-hdr">Recent Scans</span>
           </div>
-        </div>
-      )}
-
-      <div className="results-container">
-        <div className="scans-sidebar">
-          <h3>Recent Scans</h3>
-          <div className="scans-list">
-            {scans.map((scan) => (
+          <div className="rs-sidebar-cols">
+            <span className="rs-col-label">Status</span>
+            <span className="rs-col-label">Date</span>
+          </div>
+          <div className="rs-scan-list">
+            {scans.length === 0 && <div className="rs-empty">No scans yet.</div>}
+            {scans.map(scan => (
               <div
                 key={scan.id}
-                className={`scan-item ${selectedScan === scan.id ? 'active' : ''}`}
-                onClick={() => setSelectedScan(scan.id)}
+                className={`rs-scan-item ${selectedId === scan.id ? 'active' : ''}`}
+                onClick={() => setSelectedId(scan.id)}
               >
-                <div className="scan-url">{scan.target_url}</div>
-                <div className="scan-meta">
-                  <span className={`status-badge ${scan.status}`}>{scan.status}</span>
-                  <span>Score: {scan.security_score || 'N/A'}</span>
+                <div className="rs-scan-left">
+                  <span className={`rs-dot ${scan.status || 'queued'}`} />
+                  <span className="rs-scan-status-txt">Status</span>
                 </div>
+                <span className="rs-scan-date">{fmtDate(scan.created_at || scan.started_at)}</span>
               </div>
             ))}
           </div>
-        </div>
+        </aside>
 
-        <div className="results-content">
-          {results ? (
-            <>
-              <div className="result-summary">
-                <h2>Security Score: {results.securityScore || 'N/A'}</h2>
-                <div className="vuln-breakdown">
-                  <div className="vuln-item critical">
-                    <span className="vuln-count">{results.vulnerabilities?.critical || 0}</span>
-                    <span className="vuln-label">Critical</span>
-                  </div>
-                  <div className="vuln-item high">
-                    <span className="vuln-count">{results.vulnerabilities?.high || 0}</span>
-                    <span className="vuln-label">High</span>
-                  </div>
-                  <div className="vuln-item medium">
-                    <span className="vuln-count">{results.vulnerabilities?.medium || 0}</span>
-                    <span className="vuln-label">Medium</span>
-                  </div>
-                  <div className="vuln-item low">
-                    <span className="vuln-count">{results.vulnerabilities?.low || 0}</span>
-                    <span className="vuln-label">Low</span>
-                  </div>
-                </div>
-              </div>
+        {/* ── Main panel ── */}
+        <div className="rs-main">
 
-              <div className="findings-list">
-                <h3>Vulnerabilities Found</h3>
-                {results.findings && results.findings.length > 0 ? (
-                  <table className="findings-table">
-                    <thead>
-                      <tr>
-                        <th>Severity</th>
-                        <th>Type</th>
-                        <th>Title</th>
-                        <th>Location</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.findings.map((finding) => (
-                        <tr key={finding.id}>
-                          <td>
-                            <span className={`severity-badge ${finding.severity}`}>
-                              {finding.severity}
-                            </span>
-                          </td>
-                          <td>{finding.type}</td>
-                          <td>{finding.title}</td>
-                          <td><code>{finding.location}</code></td>
-                          <td>
-                            <button 
-                                className="ai-analyze-btn" 
-                                onClick={() => handleAiAnalyze(finding)}
-                                disabled={analyzingId === finding.id}
-                            >
-                                {analyzingId === finding.id ? 'Analyzing...' : '⚡ AI Check'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="empty-message">No vulnerabilities found.</p>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="empty-state">
-              <p>Select a scan to view results</p>
+          {/* Stat tiles */}
+          <div className="rs-stat-tiles">
+            <div className="rs-stat-tile">
+              <span className="rs-stat-num">{score ?? '—'}</span>
+              <span className="rs-stat-lbl">Security Score</span>
+            </div>
+            <div className="rs-stat-tile critical">
+              <span className="rs-stat-num">{criticalCount}</span>
+              <span className="rs-stat-lbl">Critical Findings</span>
+            </div>
+            <div className="rs-stat-tile">
+              <span className="rs-stat-num">{totalVulns}</span>
+              <span className="rs-stat-lbl">Total Vulnerabilities</span>
+            </div>
+          </div>
+
+          {/* Finding cards */}
+          {resultsLoading && <div className="rs-loading">Loading findings…</div>}
+
+          {!resultsLoading && findings.length === 0 && (
+            <div className="rs-findings-empty">
+              {selectedId ? 'No vulnerabilities found for this scan.' : 'Select a scan to view findings.'}
             </div>
           )}
+
+          {findings.map(finding => {
+            const sev = sevClass(finding.severity || 'info');
+            const isOpen = !!openRows[finding.id];
+            const ai = aiResults[finding.id];
+            return (
+              <div key={finding.id} className="rs-finding-card">
+                {/* Card header row */}
+                <div className="rs-fc-header" onClick={() => toggleRow(finding.id)}>
+                  <div className="rs-fc-title-group">
+                    <span className="rs-fc-title">
+                      {finding.type ? `${finding.type} Description` : 'Security Description'}
+                    </span>
+                  </div>
+                  <div className="rs-fc-right">
+                    <span className={`rs-sev-badge ${sev}`}>{finding.severity}</span>
+                    <span className="rs-chevron">{isOpen ? '∧' : '∨'}</span>
+                  </div>
+                </div>
+
+                {/* Description always visible */}
+                {finding.description && (
+                  <p className="rs-fc-desc">{finding.description}</p>
+                )}
+                {finding.title && finding.title !== finding.description && (
+                  <p className="rs-fc-subdesc">{finding.title}</p>
+                )}
+
+                {/* Remediation row */}
+                <div className="rs-fc-actions">
+                  <button
+                    className="rs-remediation-btn"
+                    onClick={() => toggleRow(finding.id)}
+                  >
+                    › Remediation Steps
+                  </button>
+                  <button
+                    className="rs-remediation-btn"
+                    disabled={analyzingId === finding.id}
+                    onClick={e => { e.stopPropagation(); handleAiAnalyze(finding); }}
+                  >
+                    {analyzingId === finding.id ? '…' : '› AI Remediation'}
+                  </button>
+                </div>
+
+                {/* Expanded details */}
+                {isOpen && (
+                  <div className="rs-fc-expanded">
+                    {finding.location && (
+                      <p className="rs-fc-loc">📍 <code>{finding.location}</code></p>
+                    )}
+                    {ai && (
+                      <div className="rs-ai-block">
+                        <p className="rs-ai-block-title">🤖 {ai.classification?.detected_type || 'AI Analysis'}</p>
+                        {ai.risk_assessment?.predicted_impact && (
+                          <p><strong>Impact:</strong> {ai.risk_assessment.predicted_impact}</p>
+                        )}
+                        {ai.remediation?.suggested_action && (
+                          <p><strong>Remediation:</strong> {ai.remediation.suggested_action}</p>
+                        )}
+                        {ai.explanation && <p>{ai.explanation}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
         </div>
       </div>
     </section>
@@ -215,4 +222,3 @@ const Results = () => {
 };
 
 export default Results;
-

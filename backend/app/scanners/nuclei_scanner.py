@@ -12,6 +12,8 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
+import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ class NucleiScanner:
         """
         Run Nuclei scan on target
         """
-        results = {
+        results: Dict[str, Any] = {
             "status": "completed",
             "scanner": "nuclei",
             "target": target,
@@ -83,7 +85,8 @@ class NucleiScanner:
         
         if not os.path.exists(self.NUCLEI_PATH):
             results["status"] = "error"
-            results["errors"].append("Nuclei not installed")
+            if isinstance(results["errors"], list):
+                results["errors"].append("Nuclei not installed")
             return results
         
         target = self._ensure_protocol(target)
@@ -114,33 +117,38 @@ class NucleiScanner:
             
             # Stream output for progress updates
             findings_count = 0
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                
-                line_str = line.decode().strip()
-                if line_str:
-                    # Nuclei outputs JSON lines when using -json flag
-                    try:
-                        finding = json.loads(line_str)
-                        parsed = self._parse_finding(finding)
-                        if parsed:
-                            results["findings"].append(parsed)
-                            findings_count += 1
-                            results["summary"][parsed["severity"]] += 1
-                            results["summary"]["total"] += 1
-                            
-                            if progress_callback:
-                                await progress_callback({
-                                    "phase": "nuclei_scan",
-                                    "message": f"Found: {parsed['title']}",
-                                    "findings_count": findings_count,
-                                    "severity": parsed["severity"]
-                                })
-                    except json.JSONDecodeError:
-                        # Not JSON, might be status message
-                        logger.debug(f"Nuclei: {line_str}")
+            if process.stdout:
+                while True:
+                    line = await process.stdout.readline()
+                    if not line:
+                        break
+                    
+                    line_str = line.decode().strip()
+                    if line_str:
+                        # Nuclei outputs JSON lines when using -json flag
+                        try:
+                            finding = json.loads(line_str)
+                            parsed = self._parse_finding(finding)
+                            if parsed:
+                                if isinstance(results["findings"], list):
+                                    results["findings"].append(parsed)
+                                
+                                findings_count += 1
+                                severity = parsed["severity"]
+                                if isinstance(results["summary"], dict) and severity in results["summary"]:
+                                    results["summary"][severity] += 1
+                                    results["summary"]["total"] += 1
+                                
+                                if progress_callback:
+                                    await progress_callback({
+                                        "phase": "nuclei_scan",
+                                        "message": f"Found: {parsed['title']}",
+                                        "findings_count": findings_count,
+                                        "severity": parsed["severity"]
+                                    })
+                        except json.JSONDecodeError:
+                            # Not JSON, might be status message
+                            logger.debug(f"Nuclei: {line_str}")
             
             await process.wait()
             
@@ -151,13 +159,21 @@ class NucleiScanner:
                         try:
                             finding = json.loads(line.strip())
                             parsed = self._parse_finding(finding)
-                            if parsed and not any(
-                                f["fingerprint"] == parsed["fingerprint"] 
-                                for f in results["findings"]
-                            ):
-                                results["findings"].append(parsed)
-                                results["summary"][parsed["severity"]] += 1
-                                results["summary"]["total"] += 1
+                            if parsed:
+                                # Check for duplicates
+                                is_dup = False
+                                if isinstance(results["findings"], list):
+                                    for f in results["findings"]:
+                                        if f.get("fingerprint") == parsed["fingerprint"]:
+                                            is_dup = True
+                                            break
+                                
+                                if not is_dup and isinstance(results["findings"], list):
+                                    results["findings"].append(parsed)
+                                    severity = parsed["severity"]
+                                    if isinstance(results["summary"], dict) and severity in results["summary"]:
+                                        results["summary"][severity] += 1
+                                        results["summary"]["total"] += 1
                         except json.JSONDecodeError:
                             continue
                 
@@ -306,11 +322,11 @@ class AdvancedVulnScanner:
         self.nuclei = NucleiScanner()
         self.custom_checks = CustomSecurityChecks()
     
-    async def scan(self, target: str, scan_types: List[str] = None, progress_callback=None) -> Dict[str, Any]:
+    async def scan(self, target: str, scan_types: Optional[List[str]] = None, progress_callback=None) -> Dict[str, Any]:
         """
         Run comprehensive vulnerability scan
         """
-        results = {
+        results: Dict[str, Any] = {
             "status": "completed",
             "target": target,
             "findings": [],
@@ -333,11 +349,15 @@ class AdvancedVulnScanner:
                 await progress_callback({"phase": "nuclei", "message": "Running Nuclei scanner"})
             
             nuclei_results = await self.nuclei.scan(target, progress_callback)
-            results["findings"].extend(nuclei_results.get("findings", []))
-            results["scanners_used"].append("nuclei")
+            if isinstance(results["findings"], list):
+                results["findings"].extend(nuclei_results.get("findings", []))
+            if isinstance(results["scanners_used"], list):
+                results["scanners_used"].append("nuclei")
             
             for severity in ["critical", "high", "medium", "low", "info"]:
-                results["summary"][severity] += nuclei_results["summary"].get(severity, 0)
+                if isinstance(results["summary"], dict) and severity in results["summary"]:
+                    n_summary = nuclei_results.get("summary", {})
+                    results["summary"][severity] += n_summary.get(severity, 0)
         
         # Run custom OWASP checks
         if "owasp" in scan_types or "full" in scan_types:
@@ -345,12 +365,17 @@ class AdvancedVulnScanner:
                 await progress_callback({"phase": "owasp", "message": "Running OWASP security checks"})
             
             owasp_results = await self.custom_checks.run_owasp_checks(target)
-            results["findings"].extend(owasp_results)
-            results["scanners_used"].append("owasp_custom")
+            if isinstance(results["findings"], list):
+                results["findings"].extend(owasp_results)
+            if isinstance(results["scanners_used"], list):
+                results["scanners_used"].append("owasp_custom")
         
         # Update summary
-        results["summary"]["total"] = len(results["findings"])
+        if isinstance(results["findings"], list) and isinstance(results["summary"], dict):
+            results["summary"]["total"] = len(results["findings"])
         
+        # Expose under 'vulnerabilities' key so scan_service can save them
+        results["vulnerabilities"] = results["findings"]
         return results
 
 
@@ -370,7 +395,9 @@ class CustomSecurityChecks:
         
         target = self._ensure_protocol(target)
         
-        async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
+        verify_ssl = settings.VERIFY_SSL
+        
+        async with httpx.AsyncClient(verify=verify_ssl, timeout=15.0) as client:
             # A01: Broken Access Control
             findings.extend(await self._check_access_control(client, target))
             
@@ -740,5 +767,3 @@ class CustomSecurityChecks:
         return target
 
 
-# Import httpx at module level
-import httpx
