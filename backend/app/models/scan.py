@@ -95,11 +95,11 @@ class ScanOptions(BaseModel):
 class Scan(BaseModel):
     """Scan document model"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    target_url: str
-    scan_type: str = "full"
-    status: str = "queued"  # queued, running, completed, failed, cancelled
+    target_url: str = Field(alias="target")
+    scan_type: List[str] = ["full"]
+    status: str = "queued"
     security_score: Optional[int] = None
-    vulnerabilities_found: int = 0
+    vulnerabilities_found: int = Field(default=0, alias="findings_count")
     scan_options: ScanOptions
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
@@ -116,6 +116,7 @@ class ScanCreate(BaseModel):
     target: str  # Can be URL or domain
     scan_type: List[str] = ["full"]
     scan_options: Optional[ScanOptions] = None
+    auth_config: Optional[Dict[str, Any]] = None  # {type: bearer|basic|cookie, credentials: {...}}
     
     @field_validator('target')
     @classmethod
@@ -130,7 +131,11 @@ class ScanCreate(BaseModel):
     @classmethod
     def validate_scan_type(cls, v: List[str]) -> List[str]:
         """Validate scan types"""
-        allowed_types = ['full', 'quick', 'ssl', 'headers', 'ports', 'vulnerabilities', 'recon']
+        allowed_types = [
+            'full', 'quick', 'ssl', 'headers', 'ports',
+            'vulnerabilities', 'vuln', 'recon', 'crawl',
+            'network', 'auth', 'api', 'content', 'advanced'
+        ]
         for scan_type in v:
             if scan_type not in allowed_types:
                 raise ValueError(f"Invalid scan type: {scan_type}. Allowed: {allowed_types}")

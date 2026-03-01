@@ -36,22 +36,34 @@ async def start_scan(
         scan_id = str(uuid.uuid4())
         new_scan = {
             "id": scan_id,
-            "target": scan_data.target,
+            "url": scan_data.target,      # original NOT NULL column
+            "target": scan_data.target,   # added via migration
             "scan_type": scan_data.scan_type,
-            "status": "pending",
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "user_id": current_user.get("id", "anonymous")
+            "status": "queued",
+            "findings_count": 0,
+            "scan_options": {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": current_user.get("id")
         }
         
         # Insert into DB
-        sb.table("scans").insert(new_scan).execute()
+        try:
+            result = sb.table("scans").insert(new_scan).execute()
+            print(f"Supabase insert result: {result}")
+        except Exception as db_error:
+            print(f"Supabase error: {db_error}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
         
         # 2. Trigger Celery Task
         # We pass arguments as simple types (strings, lists)
         task = run_scan_task.delay(
             scan_id=scan_id, 
             target=scan_data.target, 
-            scan_types=scan_data.scan_type # Expecting list of strings
+            scan_types=scan_data.scan_type,
+            auth_config=scan_data.auth_config,
+            user_id=current_user.get("id"),
+            organization_id=current_user.get("organization_id"),
+            scan_options=scan_data.scan_options.model_dump() if scan_data.scan_options else None,
         )
         
         return {
@@ -60,7 +72,10 @@ async def start_scan(
             "task_id": task.id
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -77,19 +92,21 @@ async def get_scan_status(scan_id: str):
         
         scan = result.data[0]
         
-        # Calculate progress (simplified)
-        progress = 0
-        if scan["status"] == "running":
-            progress = 45  # TODO: Calculate actual progress
-        elif scan["status"] == "completed":
-            progress = 100
+        # Use real progress from DB; derive fallback from status
+        progress = scan.get("progress") or 0
+        if not progress:
+            if scan["status"] == "completed":
+                progress = 100
+            elif scan["status"] == "running":
+                progress = 10
         
         return {
             "scanId": scan["id"],
             "status": scan["status"],
             "progress": progress,
-            "currentPhase": "Vulnerability Detection" if scan["status"] == "running" else None,
-            "startedAt": scan.get("started_at")
+            "currentPhase": scan.get("current_phase"),
+            "startedAt": scan.get("started_at"),
+            "completedAt": scan.get("completed_at"),
         }
     except HTTPException:
         raise
@@ -124,11 +141,11 @@ async def get_scan_results(scan_id: str):
         
         # Format vulnerabilities for response
         findings = []
-        for vuln in vulnerabilities[:20]:  # Limit to 20 for response
+        for vuln in vulnerabilities[:50]:  # Limit to 50 for response
             findings.append({
                 "id": vuln["id"],
                 "severity": vuln.get("severity"),
-                "type": vuln.get("type"),
+                "type": vuln.get("vuln_type") or vuln.get("type"),
                 "title": vuln.get("title"),
                 "location": vuln.get("location"),
                 "description": vuln.get("description"),
@@ -212,12 +229,16 @@ async def list_scans(skip: int = 0, limit: int = 20, current_user: dict = Depend
         for scan in scans:
             formatted.append({
                 "id": scan["id"],
-                "target_url": scan["target_url"],
-                "scan_type": scan["scan_type"],
+                "target_url": scan.get("target") or scan.get("url", ""),
+                "scan_type": scan.get("scan_type"),
                 "status": scan["status"],
                 "security_score": scan.get("security_score"),
-                "vulnerabilities_found": scan.get("vulnerabilities_found", 0),
-                "created_at": scan["created_at"]
+                "vulnerabilities_found": scan.get("findings_count", 0),
+                "vulnerabilities_count": scan.get("vulnerabilities_count", {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}),
+                "progress": scan.get("progress", 0),
+                "created_at": scan["created_at"],
+                "started_at": scan.get("started_at"),
+                "completed_at": scan.get("completed_at"),
             })
         
         return formatted

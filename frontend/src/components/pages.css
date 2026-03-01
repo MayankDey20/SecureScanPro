@@ -1,0 +1,305 @@
+
+/* ── Page shell ── */
+.page-section {
+  padding: 2rem 2.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+  min-height: calc(100vh - var(--nav-height));
+}
+
+/* ── Page header ── */
+.page-header {
+  margin-bottom: 1.8rem;
+}
+.page-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.05rem;
+  color: #f1f5f9;
+  line-height: 1.5;
+  margin: 0 0 .45rem;
+  letter-spacing: .02em;
+}
+.page-subtitle {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.52rem;
+  color: #475569;
+  line-height: 1.8;
+  margin: 0;
+  letter-spacing: .04em;
+}
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* ── Glass card ── */
+.glass-card {
+  background: rgba(8, 16, 40, 0.72);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.glass-card-header {
+  padding: .9rem 1.2rem;
+  border-bottom: 1px solid rgba(59,130,246,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+.glass-card-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  color: #94a3b8;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.glass-card-body {
+  padding: 1.2rem;
+}
+
+/* ── Severity badges ── */
+.sev-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .2rem .55rem;
+  border-radius: 4px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.48rem;
+  font-weight: 400;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sev-badge--critical { background: rgba(239,68,68,.22);  color: #f87171; border: 1px solid rgba(239,68,68,.4); }
+.sev-badge--high     { background: rgba(249,115,22,.22); color: #fb923c; border: 1px solid rgba(249,115,22,.4); }
+.sev-badge--medium   { background: rgba(234,179,8,.20);  color: #fbbf24; border: 1px solid rgba(234,179,8,.4); }
+.sev-badge--low      { background: rgba(34,197,94,.18);  color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+.sev-badge--info     { background: rgba(99,102,241,.18); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
+
+/* ── Status pills ── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .25rem .7rem;
+  border-radius: 20px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.45rem;
+  letter-spacing: .06em;
+}
+.status-pill::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.status-pill--completed { background: rgba(34,197,94,.15);  color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+.status-pill--running   { background: rgba(59,130,246,.15);  color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+.status-pill--queued    { background: rgba(234,179,8,.15);   color: #fbbf24; border: 1px solid rgba(234,179,8,.3); }
+.status-pill--failed    { background: rgba(239,68,68,.15);   color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+
+/* ── Shared table ── */
+.page-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.page-table th {
+  padding: .6rem .9rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.45rem;
+  color: #475569;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(59,130,246,.12);
+  text-align: left;
+  white-space: nowrap;
+}
+.page-table td {
+  padding: .65rem .9rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  line-height: 1.8;
+}
+.page-table tbody tr:hover {
+  background: rgba(59,130,246,.05);
+}
+.page-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.page-table code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  background: rgba(0,0,0,.35);
+  padding: .15rem .4rem;
+  border-radius: 4px;
+  color: #60a5fa;
+}
+
+/* ── Shared form elements ── */
+.page-input,
+.page-select {
+  width: 100%;
+  padding: .65rem .85rem;
+  background: rgba(4,8,28,.8);
+  border: 1px solid rgba(59,130,246,.2);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.52rem;
+  line-height: 1.8;
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+}
+.page-input:focus,
+.page-select:focus {
+  border-color: rgba(59,130,246,.55);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.page-input::placeholder { color: #334155; }
+.page-label {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.48rem;
+  color: #64748b;
+  letter-spacing: .06em;
+  margin-bottom: .45rem;
+  line-height: 1.6;
+}
+
+/* ── Primary / secondary buttons ── */
+.page-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .7rem 1.4rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.52rem;
+  letter-spacing: .05em;
+  cursor: pointer;
+  transition: opacity .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 4px 14px rgba(59,130,246,.35);
+}
+.page-btn-primary:hover {
+  opacity: .9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(59,130,246,.45);
+}
+.page-btn-primary:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+}
+.page-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1rem;
+  background: rgba(59,130,246,.1);
+  border: 1px solid rgba(59,130,246,.25);
+  border-radius: 8px;
+  color: #60a5fa;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.48rem;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.page-btn-secondary:hover {
+  background: rgba(59,130,246,.18);
+  border-color: rgba(59,130,246,.45);
+}
+.page-btn-sm {
+  padding: .35rem .7rem;
+  font-size: 0.42rem;
+}
+
+/* ── Empty / loading states ── */
+.page-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #334155;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  line-height: 2;
+}
+.page-loading {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #3b82f6;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.55rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .4; }
+}
+
+/* ── Score bar (for reports) ── */
+.score-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.06);
+  overflow: hidden;
+  flex: 1;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .6s ease;
+}
+.score-bar-fill--high   { background: linear-gradient(90deg,#22c55e,#4ade80); }
+.score-bar-fill--mid    { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+.score-bar-fill--low    { background: linear-gradient(90deg,#ef4444,#f87171); }
+
+/* ── Stat counter tile ── */
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: .9rem .6rem;
+  border-radius: 10px;
+  background: rgba(4,8,28,.6);
+  border: 1px solid rgba(59,130,246,.14);
+  text-align: center;
+  gap: .3rem;
+}
+.stat-tile__num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #f1f5f9;
+}
+.stat-tile__label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.42rem;
+  color: #475569;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.stat-tile--critical { border-color: rgba(239,68,68,.3);  }
+.stat-tile--critical .stat-tile__num { color: #f87171; }
+.stat-tile--high     { border-color: rgba(249,115,22,.3); }
+.stat-tile--high .stat-tile__num     { color: #fb923c; }
+.stat-tile--medium   { border-color: rgba(234,179,8,.3);  }
+.stat-tile--medium .stat-tile__num   { color: #fbbf24; }
+.stat-tile--low      { border-color: rgba(34,197,94,.3);  }
+.stat-tile--low .stat-tile__num      { color: #4ade80; }
+.stat-tile--info     { border-color: rgba(99,102,241,.3); }
+.stat-tile--info .stat-tile__num     { color: #818cf8; }

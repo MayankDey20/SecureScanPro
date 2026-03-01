@@ -16,10 +16,11 @@ class AnalyzeRequest(BaseModel):
 async def analyze_threat(request: AnalyzeRequest, current_user: dict = Depends(get_current_user)):
     """
     Perform AI analysis on a specific threat/vulnerability.
+    Uses Gemini 1.5 Flash if GEMINI_API_KEY is configured, otherwise falls back to heuristics.
     """
     try:
         service = AIService()
-        result = service.analyze_vulnerability(request.title, request.description, request.severity)
+        result = await service.analyze_vulnerability(request.title, request.description, request.severity)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

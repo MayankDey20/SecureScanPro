@@ -2,14 +2,87 @@
 Threat Intelligence API endpoints for Supabase
 """
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+import asyncio
+import json
 
 from app.core.supabase_client import get_supabase
 from app.models.threat import Threat, ThreatCreate, ThreatStats
 from app.services.threat_service import ThreatService
 
 router = APIRouter(prefix="/threats", tags=["threats"])
+
+
+@router.get("/last30days")
+async def threats_last_30_days():
+    """
+    Return per-day threat counts for the last 30 days for the chart.
+    Uses real data from Supabase; falls back to zeroes if table is empty.
+    """
+    try:
+        supabase = get_supabase()
+        since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        result = supabase.table("threats").select("published_date").gte(
+            "published_date", since
+        ).execute()
+
+        counts: dict[str, int] = {}
+        for row in (result.data or []):
+            raw = row.get("published_date") or ""
+            day = raw[:10]  # YYYY-MM-DD
+            if day:
+                counts[day] = counts.get(day, 0) + 1
+
+        # Build ordered list for the last 30 days
+        today = datetime.now(timezone.utc).date()
+        chart = []
+        for i in range(29, -1, -1):
+            d = (today - timedelta(days=i)).isoformat()
+            chart.append({"date": d, "count": counts.get(d, 0)})
+
+        return {"data": chart}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stream")
+async def stream_threats():
+    """
+    Server-Sent Events endpoint — pushes new threats to the client in real time.
+    Polls Supabase every 15 s for threats added/updated in the last minute.
+    """
+    async def event_generator():
+        last_check = datetime.now(timezone.utc)
+        # Send a heartbeat immediately so the browser connection stays alive
+        yield "event: connected\ndata: {}\n\n"
+        while True:
+            await asyncio.sleep(15)
+            try:
+                supabase = get_supabase()
+                since = last_check.isoformat()
+                last_check = datetime.now(timezone.utc)
+                result = supabase.table("threats").select("*").gte(
+                    "synced_at", since
+                ).order("synced_at", desc=True).limit(20).execute()
+                new_items = result.data or []
+                if new_items:
+                    payload = json.dumps(new_items, default=str)
+                    yield f"event: threats\ndata: {payload}\n\n"
+                else:
+                    yield "event: heartbeat\ndata: {}\n\n"
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("", response_model=List[Threat])

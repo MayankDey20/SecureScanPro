@@ -56,7 +56,10 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1><i className="fas fa-shield-alt"></i> SecureScan Pro</h1>
+          <div className="auth-brand">
+            <img src="/pixel-shield.svg" alt="SecureScan logo" className="auth-brand-logo" />
+            <h1 className="auth-brand-title">SecureScan <span className="auth-brand-pro">Pro</span></h1>
+          </div>
           <p>Create your account</p>
         </div>
 

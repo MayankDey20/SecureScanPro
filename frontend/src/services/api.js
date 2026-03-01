@@ -88,20 +88,31 @@ export const threatsAPI = {
     const response = await apiClient.get('/threats', { params });
     return response.data;
   },
-  
+
   get: async (threatId) => {
     const response = await apiClient.get(`/threats/${threatId}`);
     return response.data;
   },
-  
+
   sync: async () => {
     const response = await apiClient.post('/threats/sync');
     return response.data;
   },
-  
+
   getStats: async () => {
     const response = await apiClient.get('/threats/stats/summary');
     return response.data;
+  },
+
+  getLast30Days: async () => {
+    const response = await apiClient.get('/threats/last30days');
+    return response.data;   // { data: [{date, count}] }
+  },
+
+  /** Returns an EventSource for real-time new-threat pushes */
+  streamUrl: () => {
+    const base = import.meta.env.VITE_API_URL || '/api/v1';
+    return `${base}/threats/stream`;
   },
 };
 
@@ -129,20 +140,73 @@ export const authAPI = {
     const response = await apiClient.post('/auth/login', { email, password });
     return response.data;
   },
-  
+
   register: async (email, password, full_name) => {
     const response = await apiClient.post('/auth/register', { email, password, full_name });
     return response.data;
   },
-  
+
   refreshToken: async (refresh_token) => {
     const response = await apiClient.post('/auth/refresh', { refresh_token });
     return response.data;
   },
-  
+
   getMe: async () => {
     const response = await apiClient.get('/auth/me');
     return response.data;
+  },
+
+  // ── WebAuthn / Passkey (Fingerprint) ──
+  webauthnRegisterBegin: async (userId) => {
+    const response = await apiClient.post('/auth/webauthn/register/begin', { user_id: userId });
+    return response.data;
+  },
+  webauthnRegisterFinish: async (payload) => {
+    const response = await apiClient.post('/auth/webauthn/register/finish', payload);
+    return response.data;
+  },
+  webauthnAuthBegin: async (userId) => {
+    const response = await apiClient.post('/auth/webauthn/authenticate/begin', { user_id: userId });
+    return response.data;
+  },
+  webauthnAuthFinish: async (payload) => {
+    const response = await apiClient.post('/auth/webauthn/authenticate/finish', payload);
+    return response.data;
+  },
+  listPasskeys: async (userId) => {
+    const response = await apiClient.get(`/auth/webauthn/credentials/${userId}`);
+    return response.data;
+  },
+  deletePasskey: async (userId, credentialId) => {
+    await apiClient.delete(`/auth/webauthn/credentials/${userId}/${credentialId}`);
+  },
+
+  // ── PIN ──
+  pinSetup: async (userId, pin) => {
+    const response = await apiClient.post('/auth/pin/setup', { user_id: userId, pin });
+    return response.data;
+  },
+  pinVerify: async (userId, pin) => {
+    const response = await apiClient.post('/auth/pin/verify', { user_id: userId, pin });
+    return response.data;
+  },
+  pinStatus: async (userId) => {
+    const response = await apiClient.get(`/auth/pin/status/${userId}`);
+    return response.data;
+  },
+  pinRemove: async (userId) => {
+    const response = await apiClient.delete(`/auth/pin/remove/${userId}`);
+    return response.data;
+  },
+  // Resolve user_id from email (used on login screen before a session exists)
+  userIdByEmail: async (email) => {
+    const response = await apiClient.get('/auth/user-id-by-email', { params: { email } });
+    return response.data; // { user_id }
+  },
+  // Verify email+PIN without a session (login screen)
+  pinLoginVerify: async (email, pin) => {
+    const response = await apiClient.post('/auth/pin/login', { email, pin });
+    return response.data; // { success, user_id, email }
   },
 };
 
@@ -179,6 +243,28 @@ export const usersAPI = {
 export const aiAPI = {
   analyze: async (title, description, severity) => {
     const response = await apiClient.post('/ai/analyze', { title, description, severity });
+    return response.data;
+  },
+  diagnoseSymptoms: async (symptoms, context = '') => {
+    const response = await apiClient.post('/symptom-checker/diagnose', { symptoms, context });
+    return response.data;
+  },
+};
+
+export const integrationsAPI = {
+  list: async () => {
+    const response = await apiClient.get('/notifications/integrations');
+    return response.data;
+  },
+  create: async (type, name, config) => {
+    const response = await apiClient.post('/notifications/integrations', { type, name, config });
+    return response.data;
+  },
+  delete: async (id) => {
+    await apiClient.delete(`/notifications/integrations/${id}`);
+  },
+  test: async (id) => {
+    const response = await apiClient.post(`/notifications/integrations/${id}/test`);
     return response.data;
   },
 };
