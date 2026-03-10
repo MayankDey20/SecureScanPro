@@ -1,7 +1,7 @@
 import httpx
 import logging
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from app.services.providers.base import ThreatProvider
 from app.core.config import settings
@@ -158,7 +158,7 @@ class NVDProvider(ThreatProvider):
         return threats
 
     # ── Helpers ─────────────────────────────────────────────────
-    def _normalize_cve(self, cve: Dict) -> Dict | None:
+    def _normalize_cve(self, cve: Dict) -> Optional[Dict]:
         try:
             cve_id = cve.get("id", "")
             if not cve_id:

@@ -11,6 +11,8 @@ from app.api.v1 import (
     teams,
     notifications,
     vulnerabilities,
+    symptom_checker,
+    ml,
 )
 
 __all__ = [
@@ -25,4 +27,5 @@ __all__ = [
     "teams",
     "notifications",
     "vulnerabilities",
+    "ml",
 ]

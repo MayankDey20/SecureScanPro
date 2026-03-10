@@ -86,22 +86,23 @@ async def change_password(
     password_data: PasswordChange,
     current_user: dict = Depends(get_current_user)
 ):
-    """Change user password via Supabase Auth"""
+    """Change user password — verifies current password then stores new bcrypt hash."""
+    from app.core.security import verify_password
     try:
         supabase = get_supabase()
-        
-        # Supabase handles password change through Auth API
-        # Note: This requires the user's access token
-        result = supabase.auth.update_user({
-            "password": password_data.new_password
-        })
-        
+        profile = supabase.table("profiles").select("password_hash").eq("id", current_user["id"]).execute()
+        if not profile.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        stored_hash = profile.data[0].get("password_hash", "")
+        if not stored_hash or not verify_password(password_data.current_password, stored_hash):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+        new_hash = get_password_hash(password_data.new_password)
+        supabase.table("profiles").update({"password_hash": new_hash}).eq("id", current_user["id"]).execute()
         return {"message": "Password updated successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to update password: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to update password: {str(e)}")
 
 
 @router.get("/me/settings")

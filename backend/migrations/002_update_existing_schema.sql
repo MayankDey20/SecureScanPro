@@ -49,18 +49,8 @@ CREATE TABLE IF NOT EXISTS threats (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS on threats
-ALTER TABLE threats ENABLE ROW LEVEL SECURITY;
-
--- Anyone can view threats (public data)
-DROP POLICY IF EXISTS "Anyone can view threats" ON threats;
-CREATE POLICY "Anyone can view threats" ON threats
-    FOR SELECT USING (true);
-
--- Service role can do everything
-DROP POLICY IF EXISTS "Service role full access to threats" ON threats;
-CREATE POLICY "Service role full access to threats" ON threats
-    FOR ALL USING (auth.role() = 'service_role');
+-- Enable RLS on threats (disabled - access control in FastAPI layer)
+-- ALTER TABLE threats ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- UPDATE PROFILES TABLE
@@ -91,21 +81,10 @@ ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(64);
 ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
--- ADD SERVICE ROLE POLICIES
+-- SERVICE ROLE POLICIES (disabled - no Supabase RLS)
+-- Access control is handled by FastAPI JWT middleware
 -- ============================================
 
--- Allow service role (backend API) full access to all tables
-DROP POLICY IF EXISTS "Service role full access to scans" ON scans;
-CREATE POLICY "Service role full access to scans" ON scans
-    FOR ALL USING (auth.role() = 'service_role');
-
-DROP POLICY IF EXISTS "Service role full access to profiles" ON profiles;
-CREATE POLICY "Service role full access to profiles" ON profiles
-    FOR ALL USING (auth.role() = 'service_role');
-
-DROP POLICY IF EXISTS "Service role full access to vulnerabilities" ON vulnerabilities;
-CREATE POLICY "Service role full access to vulnerabilities" ON vulnerabilities
-    FOR ALL USING (auth.role() = 'service_role');
 
 -- ============================================
 -- CREATE INDEXES FOR PERFORMANCE
@@ -123,37 +102,13 @@ CREATE INDEX IF NOT EXISTS idx_threats_severity ON threats(severity);
 -- AUTO-CREATE PROFILE ON USER SIGNUP
 -- ============================================
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-    INSERT INTO public.profiles (id, email, full_name)
-    VALUES (
-        new.id, 
-        new.email, 
-        COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1))
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        email = EXCLUDED.email,
-        updated_at = NOW();
-    RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Drop and recreate trigger
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- handle_new_user trigger removed (was for Supabase auth.users - not needed with native JWT auth)
 
 -- ============================================
--- GRANT PERMISSIONS
+-- GRANT PERMISSIONS (standalone PostgreSQL)
 -- ============================================
 
-GRANT ALL ON scans TO service_role;
-GRANT ALL ON threats TO service_role;
-GRANT ALL ON profiles TO service_role;
-GRANT ALL ON vulnerabilities TO service_role;
-
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+-- Grant all to the securescan app user
+GRANT ALL ON ALL TABLES IN SCHEMA public TO securescan;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO securescan;
+GRANT USAGE ON SCHEMA public TO securescan;

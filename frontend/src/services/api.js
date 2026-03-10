@@ -1,48 +1,49 @@
 /**
- * API Client for SecureScan Pro with Supabase
+ * API Client for SecureScan Pro — native JWT auth (no Supabase).
  */
 import axios from 'axios';
-import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const TOKEN_KEY = 'ssp_access_token';
+const REFRESH_KEY = 'ssp_refresh_token';
 
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor
+// Request interceptor — attach JWT from localStorage
 apiClient.interceptors.request.use(
-  async (config) => {
-    // Get token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
-    }
+  (config) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// Response interceptor — try refresh on 401
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expired, Supabase will auto-refresh
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Retry with new token
-        error.config.headers.Authorization = `Bearer ${session.access_token}`;
-        return apiClient.request(error.config);
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken });
+          const { access_token, refresh_token } = res.data;
+          localStorage.setItem(TOKEN_KEY, access_token);
+          if (refresh_token) localStorage.setItem(REFRESH_KEY, refresh_token);
+          error.config.headers.Authorization = `Bearer ${access_token}`;
+          return apiClient.request(error.config);
+        } catch {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+          window.location.href = '/login';
+        }
       } else {
-        // No session, redirect to login
         window.location.href = '/login';
       }
     }
@@ -73,7 +74,7 @@ export const scanAPI = {
   },
   
   list: async (skip = 0, limit = 20) => {
-    const response = await apiClient.get('/scan', { params: { skip, limit } });
+    const response = await apiClient.get('/scan/', { params: { skip, limit } });
     return response.data;
   },
   

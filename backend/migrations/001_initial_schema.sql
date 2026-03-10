@@ -1,9 +1,9 @@
 -- SecureScan Pro - Initial Database Schema
--- Migration 001: Core Tables
--- Run this in Supabase SQL Editor
+-- Migration 001: Core Tables (standalone PostgreSQL - no Supabase)
 
--- Enable UUID extension
+-- Enable UUID extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================
 -- ORGANIZATIONS & TEAMS
@@ -30,12 +30,13 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 -- ============================================
--- USER PROFILES (extends Supabase auth.users)
+-- USER PROFILES (standalone - no Supabase dependency)
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash TEXT,
     full_name VARCHAR(255),
     avatar_url TEXT,
     role VARCHAR(50) DEFAULT 'user', -- superadmin, admin, analyst, user, viewer
@@ -403,42 +404,9 @@ CREATE TABLE IF NOT EXISTS integrations (
 );
 
 -- ============================================
--- ROW LEVEL SECURITY POLICIES
+-- ROW LEVEL SECURITY
+-- (Disabled - access control handled by FastAPI JWT middleware)
 -- ============================================
-
--- Enable RLS
-ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vulnerabilities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scheduled_scans ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
-
--- Profiles: Users can read/update their own profile
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-
--- Organization-based policies (users can access their org's data)
-CREATE POLICY "Org members can view org" ON organizations FOR SELECT 
-    USING (id IN (SELECT organization_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY "Org members can view assets" ON assets FOR SELECT 
-    USING (organization_id IN (SELECT organization_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY "Org members can view scans" ON scans FOR SELECT 
-    USING (organization_id IN (SELECT organization_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY "Org members can view vulnerabilities" ON vulnerabilities FOR SELECT 
-    USING (organization_id IN (SELECT organization_id FROM profiles WHERE id = auth.uid()));
-
--- Users can create scans for their org
-CREATE POLICY "Org members can create scans" ON scans FOR INSERT 
-    WITH CHECK (organization_id IN (SELECT organization_id FROM profiles WHERE id = auth.uid()));
 
 -- ============================================
 -- FUNCTIONS & TRIGGERS
@@ -484,6 +452,6 @@ CREATE TRIGGER calc_scan_duration BEFORE UPDATE ON scans
 -- ============================================
 
 -- Insert default organization for new users
-INSERT INTO organizations (id, name, slug, plan) 
+INSERT INTO organizations (id, name, slug, plan)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Default Organization', 'default', 'free')
 ON CONFLICT DO NOTHING;

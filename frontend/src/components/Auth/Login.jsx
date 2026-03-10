@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
-import { supabase } from '../../lib/supabase';
+import PasswordInput from './PasswordInput';
 import './Auth.css';
 
 /* ── base64url helpers for WebAuthn ── */
@@ -58,17 +58,12 @@ const Login = () => {
     try {
       const res = await authAPI.pinLoginVerify(email, pin);
       if (res.success) {
-        // Exchange OTP for a real session (no email sent)
-        const { error: sessionErr } = await supabase.auth.verifyOtp({
-          email,
-          token: res.otp,
-          type: 'email',
-        });
-        if (sessionErr) {
-          setError('PIN verified but session failed: ' + sessionErr.message);
-        } else {
-          navigate('/dashboard');
+        // PIN verified — tokens returned directly from backend
+        if (res.access_token) {
+          localStorage.setItem('ssp_access_token', res.access_token);
+          if (res.refresh_token) localStorage.setItem('ssp_refresh_token', res.refresh_token);
         }
+        navigate('/dashboard');
       } else {
         setError('Incorrect PIN');
       }
@@ -113,17 +108,12 @@ const Login = () => {
         signature:          b64urlEncode(assertion.response.signature),
       });
 
-      // 5. Credential verified — exchange OTP for a real session (no email sent)
-      const { error: sessionErr } = await supabase.auth.verifyOtp({
-        email,
-        token: verifyRes.otp,
-        type: 'email',
-      });
-      if (sessionErr) {
-        setError('Biometric verified but session failed: ' + sessionErr.message);
-      } else {
-        navigate('/dashboard');
+      // 5. Credential verified — store tokens returned from backend
+      if (verifyRes.access_token) {
+        localStorage.setItem('ssp_access_token', verifyRes.access_token);
+        if (verifyRes.refresh_token) localStorage.setItem('ssp_refresh_token', verifyRes.refresh_token);
       }
+      navigate('/dashboard');
     } catch (err) {
       const msg =
         err?.name === 'NotAllowedError'   ? 'Biometric prompt was cancelled' :
@@ -185,12 +175,18 @@ const Login = () => {
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <input type="email" id="email" value={email}
-                onChange={e => setEmail(e.target.value)} required placeholder="your@email.com" />
+                onChange={e => setEmail(e.target.value)} required placeholder="your@email.com"
+                autoComplete="email" />
             </div>
             <div className="form-group">
               <label htmlFor="password">Password</label>
-              <input type="password" id="password" value={password}
-                onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+              <PasswordInput
+                id="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
             </div>
             <button type="submit" className="btn-primary btn-block" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign In'}
@@ -205,6 +201,7 @@ const Login = () => {
               <label htmlFor="pin-email">Email</label>
               <input type="email" id="pin-email" value={email}
                 onChange={e => setEmail(e.target.value)} required placeholder="your@email.com"
+                autoComplete="email"
                 disabled={pinStep === 'pin'} />
             </div>
             {pinStep === 'pin' && (
@@ -225,6 +222,7 @@ const Login = () => {
                   onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="••••"
                   className="auth-pin-field"
+                  autoComplete="one-time-code"
                 />
               </div>
             )}
@@ -246,7 +244,8 @@ const Login = () => {
             <div className="form-group">
               <label htmlFor="bio-email">Email</label>
               <input type="email" id="bio-email" value={email}
-                onChange={e => setEmail(e.target.value)} placeholder="your@email.com" />
+                onChange={e => setEmail(e.target.value)} placeholder="your@email.com"
+                autoComplete="email" />
             </div>
             <p className="auth-bio-hint">
               Register your biometric first in <strong>Settings → Security &amp; Auth</strong>.

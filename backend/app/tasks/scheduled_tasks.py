@@ -38,6 +38,16 @@ celery_app.conf.beat_schedule = {
         'task': 'app.tasks.scheduled_tasks.generate_weekly_reports',
         'schedule': crontab(day_of_week=1, hour=8, minute=0),
     },
+    # Retrain ML models daily at 3 AM (after threat sync at 2 AM)
+    'retrain-ml-models': {
+        'task': 'app.tasks.ml_tasks.train_ml_models',
+        'schedule': crontab(hour=3, minute=0),
+    },
+    # Refresh ML attack forecast daily at 3:30 AM
+    'ml-threat-forecast': {
+        'task': 'app.tasks.ml_tasks.forecast_threat_volume',
+        'schedule': crontab(hour=3, minute=30),
+    },
 }
 
 

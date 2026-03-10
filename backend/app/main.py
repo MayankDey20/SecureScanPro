@@ -22,7 +22,7 @@ from app.core.config import settings
 from app.core.websocket_manager import ws_manager, RedisPubSubManager
 from app.api.v1 import (
     auth, threats, scan, users, reports, analytics, ai,
-    scheduled_scans, teams, notifications, vulnerabilities, symptom_checker
+    scheduled_scans, teams, notifications, vulnerabilities, symptom_checker, ml
 )
 
 # Configure logging
@@ -44,7 +44,6 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 SecureScan Pro starting up...")
     # Connect to Supabase
     await init_supabase()
-    logger.info("✅ Supabase connected")
     
     # Connect to Redis for WebSocket pub/sub
     await redis_pubsub.connect()
@@ -58,7 +57,7 @@ async def lifespan(app: FastAPI):
     # Disconnect Redis
     await redis_pubsub.disconnect()
     
-    # Close Supabase connection
+    # Close PostgreSQL connection
     await close_supabase()
     logger.info("✅ All connections closed")
 
@@ -119,12 +118,27 @@ async def not_found_handler(request: Request, exc):
 
 @app.exception_handler(500)
 async def internal_error_handler(request: Request, exc):
-    logger.error(f"Internal server error: {exc}")
+    import traceback
+    logger.error(f"Internal server error on {request.method} {request.url.path}: {exc}")
+    logger.error(traceback.format_exc())
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal Server Error",
-            "message": "An unexpected error occurred"
+            "message": str(exc) if settings.DEBUG else "An unexpected error occurred"
+        }
+    )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    import traceback
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {type(exc).__name__}: {exc}")
+    logger.error(traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": type(exc).__name__,
+            "message": str(exc) if settings.DEBUG else "An unexpected error occurred"
         }
     )
 
@@ -154,7 +168,7 @@ async def health_check():
         "timestamp": time.time(),
         "services": {
             "api": "operational",
-            "database": "supabase",
+            "database": "postgresql",
             "cache": "operational",
             "workers": "operational"
         }
@@ -173,6 +187,7 @@ app.include_router(teams.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(vulnerabilities.router, prefix=settings.API_V1_STR)
 app.include_router(symptom_checker.router, prefix=settings.API_V1_STR)
+app.include_router(ml.router, prefix=settings.API_V1_STR)
 
 # WebSocket endpoint for real-time scan progress
 @app.websocket("/api/v1/scan/{scan_id}/live")
@@ -190,9 +205,9 @@ async def websocket_scan_live(websocket: WebSocket, scan_id: str):
             try:
                 row = sb.table("scans").select(
                     "status,progress,current_phase"
-                ).eq("id", scan_id).maybe_single().execute()
+                ).eq("id", scan_id).execute()
                 if row and row.data:
-                    d = row.data
+                    d = row.data[0]
                     msg = {
                         "scan_id":      scan_id,
                         "status":       d.get("status", "queued"),

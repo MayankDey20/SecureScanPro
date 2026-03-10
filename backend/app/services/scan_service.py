@@ -117,14 +117,24 @@ class ScanService:
         # ── Phase 0: Web Crawl (discovers attack surface) ──────────────────────
         crawl_summary = {}
         crawl_result  = {}  # kept in scope for VulnScanner
+        depth = (scan_options or {}).get("scan_depth", "medium")
+
+        # Depth-based crawler limits
+        DEPTH_CRAWL = {
+            "shallow": {"max_depth": 1, "max_pages": 10, "max_time_seconds": 20},
+            "medium":  {"max_depth": 2, "max_pages": 30, "max_time_seconds": 45},
+            "deep":    {"max_depth": 3, "max_pages": 80, "max_time_seconds": 90},
+        }
+        crawl_limits = DEPTH_CRAWL.get(depth, DEPTH_CRAWL["medium"])
+
         if "full" in scan_types or "vuln" in scan_types or "crawl" in scan_types:
             try:
                 self._publish_progress(scan_id, "running", 8, "Crawling")
 
                 crawl_cfg = CrawlConfig(
-                    max_depth=2,
-                    max_pages=50,
-                    max_time_seconds=60,
+                    max_depth=crawl_limits["max_depth"],
+                    max_pages=crawl_limits["max_pages"],
+                    max_time_seconds=crawl_limits["max_time_seconds"],
                     auth=auth_config,
                 )
                 crawler = WebCrawler(crawl_cfg)
@@ -187,6 +197,10 @@ class ScanService:
                 continue
             if name == "network":
                 continue  # already ran above
+            # Skip slow/heavy scanners for shallow scans
+            if depth == "shallow" and name in ("advanced", "service", "api", "auth", "content"):
+                logger.info(f"Skipping heavy scanner '{name}' (depth=shallow)")
+                continue
             if name == "vuln":
                 tasks.append(scanner.scan(
                     target,

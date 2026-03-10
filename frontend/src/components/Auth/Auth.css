@@ -80,6 +80,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .form-group label {
@@ -92,6 +93,7 @@
 }
 
 .form-group input {
+  width: 100%;
   padding: 0.875rem 1rem;
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -101,6 +103,7 @@
   font-size: 0.7rem;
   line-height: 1.8;
   transition: all 0.3s;
+  box-sizing: border-box;
 }
 
 .form-group input:focus {
@@ -260,3 +263,48 @@
 .auth-bio-hint strong { color: rgba(255,255,255,0.75); }
 
 .auth-bio-btn { letter-spacing: 0.02em; }
+
+/* ── Password show/hide toggle ── */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  flex: 1;
+  width: 100%;
+  padding-right: 3rem !important;
+  box-sizing: border-box;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.password-toggle-btn:hover {
+  color: #a78bfa;
+}
+
+.password-toggle-btn svg {
+  display: block;
+  pointer-events: none;
+  width: 18px;
+  height: 18px;
+}

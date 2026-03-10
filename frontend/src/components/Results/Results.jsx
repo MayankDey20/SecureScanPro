@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { scanAPI, aiAPI } from '../../services/api';
+import { useRealtimeScan, useRealtimeScanList, isSupabaseEnabled } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import './Results.css';
 
 const sevClass = (s = '') => s.toLowerCase();
@@ -12,6 +14,7 @@ const fmtDate = (raw) => {
 };
 
 const Results = () => {
+  const { user } = useAuth();
   const [scans, setScans]             = useState([]);
   const [selectedId, setSelectedId]   = useState(null);
   const [results, setResults]         = useState(null);
@@ -20,6 +23,23 @@ const Results = () => {
   const [openRows, setOpenRows]       = useState({});
   const [aiResults, setAiResults]     = useState({});
   const [analyzingId, setAnalyzingId] = useState(null);
+
+  // ── Supabase Realtime: live scan-list updates ──────────────────────────
+  useRealtimeScanList(user?.id, {
+    onInsert: (newScan) => setScans(prev => [newScan, ...prev]),
+    onUpdate: (updated) => setScans(prev =>
+      prev.map(s => s.id === updated.id ? { ...s, ...updated } : s)
+    ),
+  });
+
+  // ── Supabase Realtime: live results for the selected scan ──────────────
+  useRealtimeScan(selectedId, (updated) => {
+    // Re-fetch full results when the selected scan row changes
+    if (updated.status === 'completed' || updated.status === 'failed') {
+      loadResults(updated.id);
+    }
+    setScans(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+  });
 
   useEffect(() => { loadScans(); }, []);
 

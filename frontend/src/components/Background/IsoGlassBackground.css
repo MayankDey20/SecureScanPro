@@ -1,0 +1,658 @@
+/* ═══════════════════════════════════════════════════
+   DATABASE SERVER RACK + GLASS WALLS BACKGROUND
+   Scene: 1–3 server racks, each enclosed in
+   frosted-glass side panels with edge-lighting,
+   binary text etch, blinking LEDs, disk stacks,
+   blade servers, network switches and cable trays.
+═══════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────
+   ROOT / BASE
+────────────────────────────────────── */
+.iso-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #06080f;
+}
+
+.iso-scene-base {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 140% 90% at 50% 55%, #101828 0%, #080d18 45%, #040609 100%);
+}
+
+/* Floor / reflection plane */
+.iso-floor {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 38%;
+  background: linear-gradient(0deg, rgba(0,212,255,0.025) 0%, transparent 100%);
+  border-top: 1px solid rgba(0,212,255,0.06);
+}
+
+/* ──────────────────────────────────────
+   RACK WRAPPER — main positioning
+────────────────────────────────────── */
+.db-rack-wrap {
+  position: absolute;
+  /* Centre rack */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -44%);
+  width: 380px;
+}
+
+/* Secondary racks */
+.db-rack-secondary {
+  width: 280px;
+  opacity: 0.72;
+}
+.db-rack-left {
+  left: 14%;
+  top: 52%;
+  transform: translate(0, -44%) scale(0.88);
+  filter: blur(0.5px);
+}
+.db-rack-right {
+  left: auto;
+  right: 4%;
+  top: 52%;
+  transform: translate(0, -44%) scale(0.88);
+  filter: blur(0.5px);
+}
+
+/* ──────────────────────────────────────
+   RACK BACK WALL
+────────────────────────────────────── */
+.db-rack-back {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0e1623 0%, #091018 100%);
+  border: 1px solid rgba(0,212,255,0.08);
+  border-radius: 4px 4px 2px 2px;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.7),
+    0 8px 48px rgba(0,0,0,0.8);
+}
+
+/* ──────────────────────────────────────
+   GLASS SIDE / TOP PANELS
+────────────────────────────────────── */
+.db-rack-glass {
+  position: absolute;
+  z-index: 10;
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+}
+
+.db-glass-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* LEFT glass wall */
+.db-rack-glass-l {
+  left: -46px;
+  top: 0;
+  bottom: 0;
+  width: 46px;
+  background: linear-gradient(90deg,
+    rgba(10,20,40,0.55) 0%,
+    rgba(20,40,80,0.38) 50%,
+    rgba(30,60,120,0.20) 100%);
+  border: 1px solid rgba(125,211,252,0.14);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  box-shadow:
+    inset 1px 0 0 rgba(125,211,252,0.25),
+    -4px 0 20px rgba(0,0,0,0.4);
+}
+
+/* RIGHT glass wall */
+.db-rack-glass-r {
+  right: -46px;
+  top: 0;
+  bottom: 0;
+  width: 46px;
+  background: linear-gradient(270deg,
+    rgba(10,20,40,0.55) 0%,
+    rgba(20,40,80,0.38) 50%,
+    rgba(30,60,120,0.20) 100%);
+  border: 1px solid rgba(125,211,252,0.14);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  box-shadow:
+    inset -1px 0 0 rgba(125,211,252,0.25),
+    4px 0 20px rgba(0,0,0,0.4);
+}
+
+/* TOP glass lid */
+.db-rack-glass-top {
+  top: -22px;
+  left: -46px;
+  right: -46px;
+  height: 22px;
+  background: linear-gradient(180deg,
+    rgba(30,60,120,0.30) 0%,
+    rgba(20,40,80,0.20) 100%);
+  border: 1px solid rgba(125,211,252,0.18);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 1px 0 rgba(125,211,252,0.35);
+}
+
+/* Grid lines etched into glass */
+.db-glass-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(125,211,252,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,211,252,0.055) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Binary text etched into glass */
+.db-glass-binary {
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.db-glass-binary-r {
+  left: auto;
+  right: 4px;
+  align-items: flex-end;
+}
+.db-bin-line {
+  font-family: 'Space Mono', monospace;
+  font-size: 5.5px;
+  color: rgba(125,211,252,0.20);
+  letter-spacing: 0.05em;
+  line-height: 2.2;
+  animation: db-bin-flicker 4s ease-in-out infinite;
+  animation-delay: calc(var(--bi, 0) * 0.6s);
+}
+@keyframes db-bin-flicker {
+  0%, 85%, 100% { opacity: 1; }
+  90%           { opacity: 0.3; }
+  95%           { opacity: 0.9; }
+}
+
+/* Cyan edge-lighting strips */
+.db-glass-edge-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(125,211,252,0.7) 50%, transparent 100%);
+  box-shadow: 0 0 8px rgba(125,211,252,0.5);
+}
+.db-glass-edge-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,212,255,0.4) 50%, transparent 100%);
+}
+
+/* ──────────────────────────────────────
+   RACK BODY (contains the rack units)
+────────────────────────────────────── */
+.db-rack-body {
+  position: relative;
+  z-index: 5;
+  padding: 8px 12px;
+}
+
+/* Rack rails */
+.db-rack-rail {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 12px;
+  background: linear-gradient(180deg,
+    #1a2535 0%,
+    #222e42 30%,
+    #1a2535 70%,
+    #141e2e 100%);
+  border: 1px solid rgba(125,211,252,0.12);
+}
+.db-rack-rail::before,
+.db-rack-rail::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: rgba(125,211,252,0.25);
+  box-shadow: 0 0 4px rgba(125,211,252,0.3);
+}
+.db-rack-rail::before { top: 12px; }
+.db-rack-rail::after  { bottom: 12px; }
+.db-rail-l { left:  0; }
+.db-rail-r { right: 0; }
+
+.db-rack-units {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 14px;
+}
+
+/* ──────────────────────────────────────
+   RACK UNIT — base styles
+────────────────────────────────────── */
+.db-rack-unit {
+  position: relative;
+  height: 38px;
+  background: linear-gradient(180deg, #111c2e 0%, #0c1524 100%);
+  border: 1px solid rgba(125,211,252,0.08);
+  border-top-color: rgba(125,211,252,0.14);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+.db-rack-unit::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--unit-accent, #38bdf8), transparent);
+  opacity: 0.3;
+}
+
+.db-ru-bezel {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 6px;
+  gap: 6px;
+}
+
+.db-ru-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 5.5px;
+  color: rgba(125,211,252,0.30);
+  letter-spacing: 0.08em;
+  min-width: 22px;
+  flex-shrink: 0;
+}
+
+.db-ru-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.db-ru-leds {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 4px 0;
+}
+
+/* ──────────────────────────────────────
+   LEDs
+────────────────────────────────────── */
+.db-led {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--lc, #22c55e);
+  box-shadow: 0 0 5px var(--lc, #22c55e), 0 0 10px var(--lc, #22c55e);
+  animation: db-led-blink 2s ease-in-out infinite;
+  animation-delay: calc(var(--li, 0) * 0.37s + 0.1s);
+}
+@keyframes db-led-blink {
+  0%, 40%, 100% { opacity: 1;   box-shadow: 0 0 5px var(--lc), 0 0 10px var(--lc); }
+  20%           { opacity: 0.2; box-shadow: none; }
+}
+
+/* ──────────────────────────────────────
+   DISK STACKS
+────────────────────────────────────── */
+.db-disk-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.db-disk {
+  width: 28px;
+  height: 7px;
+  border-radius: 2px;
+  background: linear-gradient(180deg,
+    #1e2d45 0%,
+    #162235 40%,
+    #101828 100%);
+  border: 1px solid rgba(125,211,252,0.12);
+  border-bottom-color: rgba(0,0,0,0.4);
+  position: relative;
+  animation: db-disk-seek 3s ease-in-out infinite;
+  animation-delay: calc(var(--di, 0) * 0.8s);
+}
+.db-disk::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 4px;
+  transform: translateY(-50%);
+  width: 14px; height: 2px;
+  background: linear-gradient(90deg, rgba(125,211,252,0.15), transparent);
+  border-radius: 1px;
+}
+.db-disk::after {
+  content: '';
+  position: absolute;
+  top: 50%; right: 4px;
+  transform: translateY(-50%);
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: rgba(125,211,252,0.35);
+  box-shadow: 0 0 4px rgba(125,211,252,0.4);
+}
+@keyframes db-disk-seek {
+  0%, 100% { border-right-color: rgba(125,211,252,0.12); }
+  50%       { border-right-color: rgba(34,197,94,0.5);
+              box-shadow: 0 0 4px rgba(34,197,94,0.2); }
+}
+
+/* ──────────────────────────────────────
+   BLADE SERVERS
+────────────────────────────────────── */
+.db-blade-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  height: 100%;
+  flex: 1;
+}
+
+.db-blade {
+  flex: 1;
+  height: 26px;
+  background: linear-gradient(180deg, #192840 0%, #0f1c30 100%);
+  border: 1px solid rgba(125,211,252,0.10);
+  border-radius: 2px;
+  position: relative;
+  animation: db-blade-pulse 4s ease-in-out infinite;
+  animation-delay: calc(var(--bi, 0) * 0.5s);
+}
+.db-blade::after {
+  content: '';
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 5px #38bdf8;
+  animation: db-led-blink 2s ease-in-out infinite;
+  animation-delay: calc(var(--bi, 0) * 0.4s);
+}
+@keyframes db-blade-pulse {
+  0%, 80%, 100% { border-color: rgba(125,211,252,0.10); }
+  40%           { border-color: rgba(125,211,252,0.28); box-shadow: 0 0 6px rgba(56,189,248,0.15); }
+}
+
+/* ──────────────────────────────────────
+   NETWORK SWITCH
+────────────────────────────────────── */
+.db-switch-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  justify-content: center;
+}
+
+.db-switch-ports {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  padding: 0 2px;
+}
+
+.db-port {
+  width: 7px; height: 7px;
+  background: #0c1a28;
+  border: 1px solid rgba(125,211,252,0.20);
+  border-radius: 1px;
+  position: relative;
+  animation: db-port-blink 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--pi, 0) * 0.11s);
+}
+.db-port::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 1px;
+  background: rgba(34,197,94,0.15);
+  animation: db-port-active 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--pi, 0) * 0.11s);
+}
+@keyframes db-port-blink {
+  0%, 60%, 100% { border-color: rgba(125,211,252,0.20); }
+  30%           { border-color: rgba(34,197,94,0.60); }
+}
+@keyframes db-port-active {
+  0%, 60%, 100% { background: rgba(34,197,94,0.10); }
+  30%           { background: rgba(34,197,94,0.50); }
+}
+
+.db-cable-trace {
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(125,211,252,0.05),
+    rgba(125,211,252,0.25) 40%,
+    rgba(56,189,248,0.40) 50%,
+    rgba(125,211,252,0.25) 60%,
+    rgba(125,211,252,0.05));
+  border-radius: 1px;
+  animation: db-data-flow 2s linear infinite;
+}
+@keyframes db-data-flow {
+  0%   { background-position: -200px 0; }
+  100% { background-position:  200px 0; }
+}
+
+/* ──────────────────────────────────────
+   PSU UNITS
+────────────────────────────────────── */
+.db-psu-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 1;
+}
+
+.db-psu {
+  width: 48px;
+  height: 26px;
+  background: linear-gradient(135deg, #1a2840 0%, #0f1e30 100%);
+  border: 1px solid rgba(125,211,252,0.12);
+  border-radius: 3px;
+  position: relative;
+}
+.db-psu::before {
+  content: '';
+  position: absolute;
+  top: 3px; left: 6px; right: 6px; bottom: 3px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(125,211,252,0.04) 0px,
+    rgba(125,211,252,0.04) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+.db-psu::after {
+  content: '';
+  position: absolute;
+  top: 4px; right: 5px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.db-fan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.db-fan {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(125,211,252,0.18);
+  position: relative;
+  animation: db-fan-spin 1.2s linear infinite;
+}
+.db-fan::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(125,211,252,0.15) 0deg,
+    transparent 90deg,
+    rgba(125,211,252,0.15) 180deg,
+    transparent 270deg,
+    rgba(125,211,252,0.15) 360deg
+  );
+}
+@keyframes db-fan-spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* ──────────────────────────────────────
+   RACK BASE + LEGS
+────────────────────────────────────── */
+.db-rack-base {
+  position: relative;
+  height: 10px;
+  background: linear-gradient(180deg, #0c1828 0%, #07101e 100%);
+  border: 1px solid rgba(125,211,252,0.08);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+.db-base-leg {
+  width: 8px; height: 8px;
+  background: #0e1a28;
+  border: 1px solid rgba(125,211,252,0.10);
+  border-radius: 2px;
+}
+
+/* ──────────────────────────────────────
+   CABLE TRAY
+────────────────────────────────────── */
+.db-cable-tray {
+  position: relative;
+  margin-top: 4px;
+  height: 14px;
+  padding: 2px 24px;
+  background: rgba(6,10,20,0.6);
+  border: 1px solid rgba(125,211,252,0.06);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.db-cable {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(56,189,248,0.20) 20%,
+    rgba(56,189,248,0.35) 50%,
+    rgba(56,189,248,0.20) 80%,
+    transparent);
+  animation: db-cable-pulse 3s ease-in-out infinite;
+  animation-delay: calc(var(--ci, 0) * 0.25s);
+}
+@keyframes db-cable-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1.0; }
+}
+
+/* ──────────────────────────────────────
+   AMBIENT GLOW ORBS
+────────────────────────────────────── */
+.iso-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.iso-glow-cyan {
+  width: 600px; height: 350px;
+  background: rgba(0,212,255,0.05);
+  top: 30%; left: 50%;
+  transform: translate(-50%,-50%);
+  filter: blur(90px);
+}
+.iso-glow-blue {
+  width: 400px; height: 500px;
+  background: rgba(56,189,248,0.04);
+  top: 60%; left: 20%;
+  transform: translate(-50%,-50%);
+  filter: blur(100px);
+}
+.iso-glow-green {
+  width: 300px; height: 200px;
+  background: rgba(34,197,94,0.03);
+  top: 50%; left: 80%;
+  transform: translate(-50%,-50%);
+  filter: blur(70px);
+}
+
+/* ──────────────────────────────────────
+   DEPTH-OF-FIELD VIGNETTE
+────────────────────────────────────── */
+.iso-dof-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 75% 65% at 50% 50%,
+    transparent 25%,
+    rgba(4,6,14,0.40) 60%,
+    rgba(4,6,14,0.82) 100%
+  );
+  pointer-events: none;
+}
+
+/* ──────────────────────────────────────
+   SCANLINES (subtle CRT texture)
+────────────────────────────────────── */
+.iso-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.04) 3px,
+    rgba(0,0,0,0.04) 4px
+  );
+  pointer-events: none;
+  opacity: 0.5;
+}

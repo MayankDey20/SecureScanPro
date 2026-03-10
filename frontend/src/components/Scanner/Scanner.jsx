@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { scanAPI } from '../../services/api';
-import { supabase } from '../../lib/supabase';
+import { getAccessToken } from '../../contexts/AuthContext';
 import { useAuth } from '../../contexts/AuthContext';
 import './Scanner.css';
 
@@ -46,6 +46,15 @@ const SCAN_TYPE_OPTIONS = [
   { value: 'headers',         label: 'Headers Only' },
   { value: 'recon',           label: 'Recon Only' },
 ];
+
+// Phases that are NOT run for a given scan type
+const SKIPPED_PHASES = {
+  full:            [],
+  vulnerabilities: ['Reconnaissance', 'Port Scanning', 'SSL Analysis', 'Header Inspection', 'Deep Vulnerability Scan'],
+  ssl:             ['Crawling', 'Reconnaissance', 'Port Scanning', 'Header Inspection', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
+  headers:         ['Crawling', 'Reconnaissance', 'Port Scanning', 'SSL Analysis', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
+  recon:           ['Crawling', 'Port Scanning', 'SSL Analysis', 'Header Inspection', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
+};
 
 const Toast = ({ toast, onDismiss }) => {
   useEffect(() => {
@@ -168,8 +177,7 @@ const Scanner = () => {
 
     let token = '';
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      token = session?.access_token || '';
+      token = getAccessToken() || '';
     } catch { /* skip */ }
 
     const url = `${WS_BASE}/scan/${scanId}/live${token ? `?token=${token}` : ''}`;
@@ -180,9 +188,13 @@ const Scanner = () => {
     let wsAlive   = false;
     const fallbackTimer = setTimeout(() => {
       if (!wsAlive) { ws.close(); startPolling(scanId); }
-    }, 3000);
+    }, 1500);
 
-    ws.onopen = () => { wsAlive = true; clearTimeout(fallbackTimer); };
+    ws.onopen = () => {
+      wsAlive = true;
+      clearTimeout(fallbackTimer);
+      stopPolling(); // WS is live — stop redundant polling
+    };
 
     ws.onmessage = async (event) => {
       try {
@@ -211,7 +223,12 @@ const Scanner = () => {
     };
 
     ws.onerror = () => { clearTimeout(fallbackTimer); if (!wsAlive) startPolling(scanId); };
-    ws.onclose = () => { clearTimeout(fallbackTimer); wsRef.current = null; };
+    ws.onclose = () => {
+      clearTimeout(fallbackTimer);
+      wsRef.current = null;
+      // If scan hasn't finished yet, fall back to polling
+      if (wsAlive) startPolling(scanId);
+    };
   }, [fetchResults, startPolling]);
 
   useEffect(() => () => {
@@ -439,12 +456,14 @@ const Scanner = () => {
           <div className="sc-phase-stepper">
             {PHASES.map((p, i) => {
               const currentIdx = PHASES.indexOf(activeScan.phase);
-              const done   = i < currentIdx;
-              const active = i === currentIdx;
+              const skippedSet = SKIPPED_PHASES[formData.scanType] || [];
+              const isSkipped  = skippedSet.includes(p);
+              const done       = !isSkipped && i < currentIdx;
+              const active     = !isSkipped && i === currentIdx;
               return (
-                <div key={p} className={`sc-phase-step${done ? ' done' : active ? ' active' : ''}`}>
-                  <div className="sc-phase-dot">{done ? '✓' : i + 1}</div>
-                  <span className="sc-phase-label">{p}</span>
+                <div key={p} className={`sc-phase-step${done ? ' done' : active ? ' active' : isSkipped ? ' skipped' : ''}`}>
+                  <div className="sc-phase-dot">{isSkipped ? '⊘' : done ? '✓' : i + 1}</div>
+                  <span className="sc-phase-label">{p}{isSkipped ? <span className="sc-phase-skip-tag">skipped</span> : null}</span>
                 </div>
               );
             })}

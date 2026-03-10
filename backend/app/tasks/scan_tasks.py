@@ -48,3 +48,11 @@ def run_scan_task(
         except Exception:
             pass # Fail silently if DB is unreachable
         return {"error": str(e), "scan_id": scan_id}
+    finally:
+        # Fire-and-forget ML analysis after every scan (success or fail)
+        # Runs as a separate Celery task so it never blocks the scan response
+        try:
+            from app.tasks.ml_tasks import run_ml_analysis_for_scan
+            run_ml_analysis_for_scan.apply_async(args=[scan_id], countdown=5)
+        except Exception:
+            pass  # ML analysis is non-critical
