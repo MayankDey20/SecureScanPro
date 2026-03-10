@@ -1,5 +1,5 @@
 """
-Base model utilities for Supabase
+Base model utilities
 """
 from datetime import datetime
 from typing import Optional

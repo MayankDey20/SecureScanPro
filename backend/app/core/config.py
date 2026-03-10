@@ -2,7 +2,7 @@
 Configuration settings for SecureScan Pro
 """
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import List, Optional
 import secrets
 
 
@@ -15,11 +15,12 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
     
-    # Supabase
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_KEY: str
-    
+    # Supabase — exclusive data store
+    # Find these at: Supabase Dashboard → Project Settings → API
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""              # anon/public key (client-side)
+    SUPABASE_SERVICE_ROLE_KEY: str = "" # service role key (backend only)
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
@@ -37,7 +38,13 @@ class Settings(BaseSettings):
     VERIFY_SSL: bool = True
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost",
+        "http://localhost:80",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+    ]
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60

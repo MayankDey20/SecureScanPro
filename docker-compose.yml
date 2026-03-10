@@ -15,6 +15,7 @@ services:
       retries: 5
     networks:
       - securescan-network
+    restart: unless-stopped
 
   # FastAPI Backend
   api:
@@ -38,6 +39,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - securescan-network
     restart: unless-stopped
@@ -46,7 +53,7 @@ services:
   worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     container_name: securescan-worker
     command: celery -A app.celery_worker worker --loglevel=info --concurrency=4 -Q scans,celery
     env_file:
@@ -103,13 +110,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: securescan-frontend
-    ports:
-      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
       - api
     networks:
@@ -128,7 +131,8 @@ services:
       - ./frontend:/usr/share/nginx/html:ro
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - securescan-network
     restart: unless-stopped

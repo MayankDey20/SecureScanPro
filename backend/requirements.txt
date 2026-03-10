@@ -7,9 +7,12 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 email-validator==2.1.0
 
-# Database
-supabase==2.10.0
+# Database / Cache
 redis==5.0.1
+
+# Supabase SDK (primary data store — PostgreSQL is fallback)
+supabase>=2.3.0
+
 
 # Security & Authentication
 python-jose[cryptography]==3.3.0
@@ -19,7 +22,7 @@ python-multipart==0.0.6
 
 # HTTP & Networking
 httpx
-google-generativeai>=0.8.0==0.27.2
+google-generativeai>=0.8.0
 requests==2.31.0
 aiohttp==3.9.1
 urllib3==2.1.0
@@ -47,6 +50,10 @@ python-whois==0.8.0
 # Data Processing
 pandas==2.2.3
 numpy==1.26.4
+
+# Machine Learning — Threat Detection
+scikit-learn==1.4.2
+xgboost==2.0.3
 
 # WebSocket
 websockets>=13.0

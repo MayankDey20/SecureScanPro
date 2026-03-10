@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-import NetworkBackground from '../Background/NetworkBackground';
+
+import IsoGlassBackground from '../Background/IsoGlassBackground';
 import './Home.css';
 
 /* ── comparison table data ── */
@@ -74,10 +74,10 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { value: '13+',   label: 'Attack Pattern Types' },
-  { value: '50+',   label: 'Scan Checks Per Target' },
-  { value: '99.9%', label: 'Uptime SLA' },
-  { value: '< 5s',  label: 'Avg. First Finding' },
+  { value: '13+',   label: 'Attack Pattern Types', icon: 'fa-shield-virus' },
+  { value: '50+',   label: 'Scan Checks Per Target', icon: 'fa-search' },
+  { value: '99.9%', label: 'Uptime SLA',             icon: 'fa-tachometer-alt' },
+  { value: '< 5s',  label: 'Avg. First Finding',     icon: 'fa-bolt' },
 ];
 
 const Check = () => <span className="hm-check"><i className="fas fa-check" /></span>;
@@ -87,10 +87,11 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const dest = user ? '/dashboard' : '/register';
-  const handleSignOut = async () => { await supabase.auth.signOut(); navigate('/'); };
+  const { logout } = useAuth();
+  const handleSignOut = () => { logout(); navigate('/'); };
   return (
   <div className="hm-root">
-    <NetworkBackground />
+    <IsoGlassBackground />
 
     {/* ════ PUBLIC NAVBAR ════ */}
     <nav className="hm-nav">
@@ -119,7 +120,7 @@ const Home = () => {
       </div>
       <h1 className="hm-hero-title">
         Scan. Diagnose.<br />
-        <span className="hm-hero-gradient">Defend.</span>
+        <span className="hm-hero-blue">Defend.</span>
       </h1>
       <p className="hm-hero-sub">
         SecureScanPro combines automated vulnerability scanning, real-time threat intelligence
@@ -139,6 +140,7 @@ const Home = () => {
       <div className="hm-stats">
         {STATS.map((s) => (
           <div key={s.label} className="hm-stat">
+            <i className={`fas ${s.icon} hm-stat-icon`} />
             <span className="hm-stat-value">{s.value}</span>
             <span className="hm-stat-label">{s.label}</span>
           </div>
@@ -228,7 +230,7 @@ const Home = () => {
             diagnosis — is the same standard used by dedicated security consultants.
           </p>
           <div className="hm-about-pills">
-            {['FastAPI', 'React', 'Gemini AI', 'Supabase', 'Celery', 'Nuclei'].map((t) => (
+            {['FastAPI', 'React', 'Gemini AI', 'PostgreSQL', 'Celery', 'Nuclei'].map((t) => (
               <span key={t} className="hm-pill">{t}</span>
             ))}
           </div>

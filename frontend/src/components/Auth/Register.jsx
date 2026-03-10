@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import PasswordInput from './PasswordInput';
 import './Auth.css';
 
 const Register = () => {
@@ -75,6 +76,7 @@ const Register = () => {
               value={formData.fullName}
               onChange={handleChange}
               placeholder="John Doe"
+              autoComplete="name"
             />
           </div>
 
@@ -88,33 +90,32 @@ const Register = () => {
               onChange={handleChange}
               required
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
+              autoComplete="new-password"
               required
               minLength={6}
-              placeholder="••••••••"
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
+            <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              autoComplete="new-password"
               required
-              placeholder="••••••••"
             />
           </div>
 

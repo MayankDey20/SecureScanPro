@@ -1,10 +1,10 @@
 """
 Scan API endpoints for Supabase
 """
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from typing import List, Optional
 from datetime import datetime, timezone
-import uuid
+import uuid, asyncio
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -17,6 +17,61 @@ from app.tasks.scan_tasks import run_scan_task
 
 router = APIRouter(prefix="/scan", tags=["scans"])
 limiter = Limiter(key_func=get_remote_address)
+
+
+@router.websocket("/{scan_id}/live")
+async def scan_live_ws(scan_id: str, websocket: WebSocket, token: Optional[str] = None):
+    """
+    WebSocket endpoint that streams real-time scan progress.
+    Polls Supabase every 2s and pushes progress until completed/failed.
+    """
+    await websocket.accept()
+    sb = get_supabase()
+    try:
+        last_progress = -1
+        while True:
+            try:
+                result = sb.table("scans").select(
+                    "id,status,progress,current_phase,findings_count,started_at,completed_at,error_message"
+                ).eq("id", scan_id).execute()
+            except Exception:
+                await asyncio.sleep(2)
+                continue
+
+            if not result.data:
+                await websocket.send_json({"error": "Scan not found"})
+                break
+
+            scan = result.data[0]
+            progress = scan.get("progress") or 0
+            status   = scan.get("status", "queued")
+
+            # Only push when something changed
+            if progress != last_progress:
+                last_progress = progress
+                await websocket.send_json({
+                    "scan_id":       scan_id,
+                    "status":        status,
+                    "progress":      progress,
+                    "current_phase": scan.get("current_phase") or "Initializing",
+                    "findings_count":scan.get("findings_count") or 0,
+                    "started_at":    scan.get("started_at"),
+                    "completed_at":  scan.get("completed_at"),
+                })
+
+            if status in ("completed", "failed", "cancelled"):
+                break
+
+            await asyncio.sleep(2)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 @router.post("/start")
@@ -41,7 +96,7 @@ async def start_scan(
             "scan_type": scan_data.scan_type,
             "status": "queued",
             "findings_count": 0,
-            "scan_options": {},
+            "scan_options": scan_data.scan_options.model_dump() if scan_data.scan_options else {},
             "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": current_user.get("id")
         }
@@ -213,7 +268,7 @@ async def start_batch_scan(data: dict, current_user: dict = Depends(get_current_
         raise HTTPException(status_code=500, detail=f"Failed to start batch scan: {str(e)}")
 
 
-@router.get("")
+@router.get("/")
 async def list_scans(skip: int = 0, limit: int = 20, current_user: dict = Depends(get_current_user)):
     """List scans"""
     try:
