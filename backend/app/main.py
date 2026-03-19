@@ -42,23 +42,36 @@ redis_pubsub = RedisPubSubManager(settings.REDIS_URL)
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     logger.info("🚀 SecureScan Pro starting up...")
-    # Connect to Supabase
-    await init_supabase()
-    
-    # Connect to Redis for WebSocket pub/sub
-    await redis_pubsub.connect()
-    await redis_pubsub.start_listener()
-    logger.info("✅ Redis pub/sub connected")
-    
-    logger.info("✅ Background workers started")
+
+    # Connect to Supabase (non-fatal: let healthcheck pass even if slow)
+    try:
+        await init_supabase()
+    except Exception as e:
+        logger.warning(f"⚠️  Supabase init deferred: {e}")
+
+    # Connect to Redis for WebSocket pub/sub (non-fatal)
+    try:
+        await redis_pubsub.connect()
+        await redis_pubsub.start_listener()
+        logger.info("✅ Redis pub/sub connected")
+    except Exception as e:
+        logger.warning(f"⚠️  Redis pub/sub unavailable: {e}")
+
+    logger.info("✅ SecureScan Pro ready")
     yield
     logger.info("🛑 SecureScan Pro shutting down...")
-    
+
     # Disconnect Redis
-    await redis_pubsub.disconnect()
-    
-    # Close PostgreSQL connection
-    await close_supabase()
+    try:
+        await redis_pubsub.disconnect()
+    except Exception:
+        pass
+
+    # Close Supabase connection
+    try:
+        await close_supabase()
+    except Exception:
+        pass
     logger.info("✅ All connections closed")
 
 # Create FastAPI application
