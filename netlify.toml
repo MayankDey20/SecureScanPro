@@ -6,11 +6,15 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# Proxy API requests to Railway backend.
+# Replace YOUR_RAILWAY_URL with your actual Railway domain
+# (e.g., securescanpro-production.up.railway.app)
 [[redirects]]
   from = "/api/*"
-  to = "https://your-backend-url/api/:splat"
+  to = "https://YOUR_RAILWAY_URL.up.railway.app/api/:splat"
   status = 200
   force = true
+  headers = {X-From = "Netlify"}
 
 [[redirects]]
   from = "/*"
