@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     # Default to True for security. Set to False only for testing against self-signed certs.
     VERIFY_SSL: bool = True
 
-    # CORS
+    # CORS — override via env var on Railway to include your Netlify domain, e.g.
+    # CORS_ORIGINS=["http://localhost:3000","https://your-app.netlify.app"]
     CORS_ORIGINS: List[str] = [
         "http://localhost",
         "http://localhost:80",
