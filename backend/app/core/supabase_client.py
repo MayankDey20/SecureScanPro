@@ -31,7 +31,12 @@ def _init_supabase_client():
     logger.info("✅ Supabase client initialised with service role key — RLS bypassed")
 
 
-_init_supabase_client()
+def _get_client():
+    """Lazy accessor — initialises on first call so import never crashes."""
+    global _supabase_client
+    if _supabase_client is None:
+        _init_supabase_client()
+    return _supabase_client
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -53,7 +58,7 @@ class _Query:
     """Synchronous Supabase query builder."""
 
     def __init__(self, table: str):
-        self._ref = _supabase_client.table(table)
+        self._ref = _get_client().table(table)
         self._ops: list = []
 
     def _chain(self, method, *args, **kwargs):
@@ -209,10 +214,11 @@ async def init_supabase():
     """Verify Supabase connectivity on startup."""
     import asyncio
     try:
+        client = _get_client()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
-            lambda: _supabase_client.table("profiles").select("id").limit(1).execute()
+            lambda: client.table("profiles").select("id").limit(1).execute()
         )
         logger.info("✅ Supabase connected — exclusive data store")
     except Exception as e:
