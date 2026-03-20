@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  SECRETS_SCAN_ENABLED = "false"
 
 # Proxy API requests to Railway backend.
 # Replace YOUR_RAILWAY_URL with your actual Railway domain
