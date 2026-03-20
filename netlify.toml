@@ -11,7 +11,7 @@
 # (e.g., securescanpro-production.up.railway.app)
 [[redirects]]
   from = "/api/*"
-  to = "https://YOUR_RAILWAY_URL.up.railway.app/api/:splat"
+  to = "https://web-production-2dab0.up.railway.app/api/:splat"
   status = 200
   force = true
   headers = {X-From = "Netlify"}
