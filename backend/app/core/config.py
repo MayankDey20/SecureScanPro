@@ -2,6 +2,7 @@
 Configuration settings for SecureScan Pro
 """
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import List, Optional
 import secrets
 
@@ -23,8 +24,16 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    CELERY_BROKER_URL: Optional[str] = None
+    CELERY_RESULT_BACKEND: Optional[str] = None
+
+    @model_validator(mode='after')
+    def setup_celery_urls(self) -> 'Settings':
+        if not self.CELERY_BROKER_URL:
+            self.CELERY_BROKER_URL = self.REDIS_URL
+        if not self.CELERY_RESULT_BACKEND:
+            self.CELERY_RESULT_BACKEND = self.REDIS_URL
+        return self
     
     # Security
     # Generate a secure random key if not provided (safe default for dev)
