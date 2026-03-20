@@ -11,7 +11,7 @@ email-validator==2.1.0
 redis==5.0.1
 
 # Supabase SDK (primary data store — PostgreSQL is fallback)
-supabase>=2.3.0
+supabase==2.7.4
 
 
 # Security & Authentication
@@ -56,7 +56,7 @@ scikit-learn==1.4.2
 xgboost==2.0.3
 
 # WebSocket
-websockets>=13.0
+websockets==13.1
 
 # PDF Report Generation
 reportlab==4.0.8

@@ -211,19 +211,23 @@ AsyncSessionLocal = None
 # ── Lifecycle hooks (called from main.py) ───────────────────────────────────
 
 async def init_supabase():
-    """Verify Supabase connectivity on startup."""
+    """Verify Supabase connectivity on startup (non-fatal, 10 s timeout)."""
     import asyncio
     try:
         client = _get_client()
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: client.table("profiles").select("id").limit(1).execute()
+        await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: client.table("profiles").select("id").limit(1).execute()
+            ),
+            timeout=10.0
         )
         logger.info("✅ Supabase connected — exclusive data store")
+    except asyncio.TimeoutError:
+        logger.warning("⚠️  Supabase connectivity check timed out (10 s) — continuing")
     except Exception as e:
-        logger.error(f"❌ Supabase connectivity check failed: {e}")
-        raise
+        logger.warning(f"⚠️  Supabase connectivity check failed: {e} — continuing")
 
 
 async def close_supabase():
