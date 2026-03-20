@@ -1,15 +1,9 @@
-# Railway config for the Celery Worker service.
-# In the Railway Dashboard → Worker service → Settings → Config File Path,
-# set this to: backend/railway.worker.toml
-# This disables the HTTP healthcheck (worker has no web server).
-
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.worker"
 
 [deploy]
 startCommand = "celery -A app.celery_worker:celery_app worker --loglevel=info --concurrency=2"
-# No healthcheckPath — workers are NOT web servers.
-# Railway will simply monitor the process; if Celery exits, it restarts.
+healthcheckPath = ""
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
