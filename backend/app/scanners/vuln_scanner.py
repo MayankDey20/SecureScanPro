@@ -119,6 +119,7 @@ class VulnScanner:
         target: str,
         crawl_data: Optional[Dict] = None,
         auth_config: Optional[Dict] = None,
+        depth: str = "medium",
     ) -> Dict[str, Any]:
         """
         Run all vulnerability probes against the target.
@@ -147,30 +148,39 @@ class VulnScanner:
             ) as client:
 
                 # 1. URL param injection (GET params already in URL)
-                vulns += await self._probe_url_params(client, target)
+                vulns += await self._probe_url_params(client, target, depth)
+                
+                # Also probe params in all discovered URLs
+                if crawl_data and "urls" in crawl_data:
+                    for crawled_url in crawl_data.get("urls", [])[:20]: # Limit to reasonable number to prevent hanging forever
+                        if "?" in crawled_url:
+                            vulns += await self._probe_url_params(client, crawled_url, depth)
 
                 # 2. Common GET param fuzzing (?id=, ?q=, ?page=, etc.)
-                vulns += await self._probe_common_params(client, target)
+                if depth != "shallow":
+                    vulns += await self._probe_common_params(client, target)
 
                 # 3. Header-based XSS / injection
                 vulns += await self._probe_headers(client, target)
 
-                # 4. Open redirect
-                vulns += await self._probe_open_redirect(client, target)
+                if depth != "shallow":
+                    # 4. Open redirect
+                    vulns += await self._probe_open_redirect(client, target)
 
-                # 5. Path traversal
-                vulns += await self._probe_path_traversal(client, target)
+                    # 5. Path traversal
+                    vulns += await self._probe_path_traversal(client, target)
 
-                # 6. SSTI
-                vulns += await self._probe_ssti(client, target)
+                    # 6. SSTI
+                    vulns += await self._probe_ssti(client, target)
 
                 # 7. Form fuzzing (requires crawl_data)
                 if crawl_data:
                     forms = crawl_data.get("forms", [])
-                    vulns += await self._fuzz_forms(client, forms, target)
+                    vulns += await self._fuzz_forms(client, forms, target, depth)
 
                 # 8. JSON endpoint fuzzing
-                vulns += await self._probe_json_endpoints(client, target)
+                if depth != "shallow":
+                    vulns += await self._probe_json_endpoints(client, target)
 
                 # 9. CSRF check (on crawled forms)
                 if crawl_data:
@@ -204,7 +214,7 @@ class VulnScanner:
     # ── 1. URL param probing ─────────────────────────────────────────────────
 
     async def _probe_url_params(
-        self, client: httpx.AsyncClient, target: str
+        self, client: httpx.AsyncClient, target: str, depth: str = "medium"
     ) -> List[Dict]:
         """Inject into existing URL query parameters."""
         vulns = []
@@ -236,9 +246,10 @@ class VulnScanner:
                     pass
 
             # Blind SQLi (time-based)
-            v = await self._blind_sqli(client, target, "GET", param_name)
-            if v:
-                vulns.append(v)
+            if depth != "shallow":
+                v = await self._blind_sqli(client, target, "GET", param_name)
+                if v:
+                    vulns.append(v)
 
             # XSS
             for payload in XSS_PAYLOADS[:3]:
@@ -449,6 +460,7 @@ class VulnScanner:
         client: httpx.AsyncClient,
         forms: List[Dict],
         target: str,
+        depth: str = "medium"
     ) -> List[Dict]:
         """
         Fuzz every discovered form field with SQLi, XSS, CMDi, SSTI payloads.
@@ -493,11 +505,12 @@ class VulnScanner:
                         pass
 
                 # ── Blind SQLi (time-based) ──
-                v = await self._blind_sqli_form(
-                    client, action, method, baseline, field_name
-                )
-                if v:
-                    vulns.append(v)
+                if depth != "shallow":
+                    v = await self._blind_sqli_form(
+                        client, action, method, baseline, field_name
+                    )
+                    if v:
+                        vulns.append(v)
 
                 # ── XSS ──
                 for xss in XSS_PAYLOADS[:4]:

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { scanAPI } from '../../services/api';
+import { scanAPI, systemAPI } from '../../services/api';
 import { getAccessToken } from '../../contexts/AuthContext';
 import { useAuth } from '../../contexts/AuthContext';
 import './Scanner.css';
@@ -40,11 +40,12 @@ const SCAN_DEPTH_OPTIONS = [
 ];
 
 const SCAN_TYPE_OPTIONS = [
-  { value: 'full',            label: 'Full Security Audit' },
-  { value: 'vulnerabilities', label: 'Vulnerability Only' },
-  { value: 'ssl',             label: 'SSL/TLS Check' },
-  { value: 'headers',         label: 'Headers Only' },
-  { value: 'recon',           label: 'Recon Only' },
+  { value: 'full',            label: 'FULL AUDIT' },
+  { value: 'vulnerabilities', label: 'VULN ONLY' },
+  { value: 'ssl',             label: 'SSL/TLS' },
+  { value: 'headers',         label: 'HEADERS' },
+  { value: 'recon',           label: 'RECON' },
+  { value: 'custom',          label: 'CUSTOM' },
 ];
 
 // Phases that are NOT run for a given scan type
@@ -54,6 +55,7 @@ const SKIPPED_PHASES = {
   ssl:             ['Crawling', 'Reconnaissance', 'Port Scanning', 'Header Inspection', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
   headers:         ['Crawling', 'Reconnaissance', 'Port Scanning', 'SSL Analysis', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
   recon:           ['Crawling', 'Port Scanning', 'SSL Analysis', 'Header Inspection', 'Vulnerability Detection', 'Deep Vulnerability Scan'],
+  custom:          [],
 };
 
 const Toast = ({ toast, onDismiss }) => {
@@ -92,6 +94,7 @@ const Scanner = () => {
   // Live system status metrics (simulated fluctuation)
   const [serverLoad, setServerLoad] = useState(35);
   const [networkSpeed, setNetworkSpeed] = useState(132);
+  const [latency, setLatency] = useState(24);
   const [scanTimer, setScanTimer] = useState(0);
 
   const pollRef  = useRef(null);
@@ -116,13 +119,60 @@ const Scanner = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [activeScan?.status]);
 
-  // Simulated server / network fluctuation
+  // Real-time server and network metrics
   useEffect(() => {
-    const id = setInterval(() => {
-      setServerLoad(v => Math.max(10, Math.min(95, v + ((Math.random() * 6 - 3) | 0))));
-      setNetworkSpeed(v => Math.max(80, Math.min(250, v + ((Math.random() * 10 - 5) | 0))));
-    }, 2500);
-    return () => clearInterval(id);
+    const fetchMetrics = async () => {
+      const startTime = performance.now();
+      try {
+        // Fetch real server load from backend
+        const metrics = await systemAPI.getMetrics();
+        const endTime = performance.now();
+        
+        // Calculate Latency (RTT)
+        setLatency(Math.round(endTime - startTime));
+
+        if (metrics && metrics.server_load !== undefined) {
+          setServerLoad(metrics.server_load);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch system metrics:', err);
+      }
+
+      // Estimate real user network speed using browser's Network Information API
+      if (navigator.connection && navigator.connection.downlink) {
+        // downlink returns effective bandwidth estimate in megabits per second
+        // We add a tiny bit of random jitter (±0.5 Mbps) to make it feel "live" 
+        // since the browser's raw value is often heavily rounded/cached.
+        const rawDownlink = navigator.connection.downlink;
+        const jitter = (Math.random() - 0.5); 
+        setNetworkSpeed(Math.max(1, (rawDownlink + jitter).toFixed(1)));
+      } else {
+        // Fallback or jitter for default
+        const base = 132;
+        const jitter = (Math.random() * 4 - 2);
+        setNetworkSpeed(Math.round(base + jitter));
+      }
+    };
+
+    fetchMetrics(); // Initial fetch
+    const id = setInterval(fetchMetrics, 5000); // Poll every 5s
+
+    // Optionally listen to connection change events
+    const updateNetwork = () => {
+      if (navigator.connection && navigator.connection.downlink) {
+        setNetworkSpeed(Math.round(navigator.connection.downlink));
+      }
+    };
+    if (navigator.connection) {
+      navigator.connection.addEventListener('change', updateNetwork);
+    }
+
+    return () => {
+      clearInterval(id);
+      if (navigator.connection) {
+        navigator.connection.removeEventListener('change', updateNetwork);
+      }
+    };
   }, []);
 
   const fmtTimer = (s) => {
@@ -291,237 +341,304 @@ const Scanner = () => {
 
   const depthDesc  = SCAN_DEPTH_OPTIONS.find(d => d.value === formData.scanDepth)?.desc ?? '';
   const typeLabel  = SCAN_TYPE_OPTIONS.find(t => t.value === formData.scanType)?.label ?? '';
-
   return (
-    <section className="sc-section">
+    <main className="pt-16 min-h-screen relative cyber-grid">
       <Toast toast={toast} onDismiss={dismissToast} />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 right-20 w-96 h-96 bg-primary/10 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-40 left-20 w-80 h-80 bg-secondary/5 blur-[100px] rounded-full"></div>
+      </div>
+      <div className="max-w-6xl mx-auto px-8 py-12 relative z-10">
+        <header className="mb-12 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-widest mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block heading-glow" style={{ fontFamily: "'Press Start 2P', monospace", lineHeight: "1.4" }}>
+            ADVANCED SECURITY SCANNER
+          </h1>
+          <div className="flex items-center justify-center gap-4 text-xs font-headline tracking-[0.3em] text-slate-500 uppercase">
+            <span className="text-primary">System Integrity: 99.8%</span>
+            <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
+            <span className="text-secondary">Threat Detection: {activeScan ? 'Active' : 'Standby'}</span>
+          </div>
+        </header>
 
-      <h1 className="sc-title">Advanced Security Scanner</h1>
-      <p className="sc-subtitle">Configure and launch comprehensive security assessments</p>
-
-      {/* ── Main configuration card ── */}
-      <div className="sc-main-card">
-
-        {/* Stepper */}
-        <div className="sc-stepper">
-          {STEPPER_STEPS.map((step, i) => (
-            <div key={step.label} className="sc-step-group">
-              <button
-                type="button"
-                className={`sc-step ${i === activeStep ? 'active' : i < activeStep ? 'done' : ''}`}
-                onClick={() => setActiveStep(i)}
-              >
-                <span className="sc-step-icon">{step.icon}</span>
-                <span className="sc-step-label">{step.label}</span>
-              </button>
-              {i < STEPPER_STEPS.length - 1 && <span className="sc-step-arrow">›</span>}
-            </div>
-          ))}
-        </div>
-
-        {/* Body — 2-column */}
-        <div className="sc-body">
-
-          {/* ── LEFT column ── */}
-          <div className="sc-left">
-
-            {/* Target URL */}
-            <div className="sc-field-group">
-              <label className="sc-label">Target URL</label>
-              <div className="sc-input-wrap">
-                <input
-                  className={`sc-input${urlValid === false ? ' sc-input--err' : urlValid === true ? ' sc-input--ok' : ''}`}
-                  type="text"
-                  value={formData.targetUrl}
-                  onChange={e => { setFormData({ ...formData, targetUrl: e.target.value }); setUrlValid(null); }}
-                  onFocus={() => setActiveStep(0)}
-                  placeholder="https://example.com"
-                />
-                <button type="button" className="sc-validate-btn" onClick={validateUrl}>
-                  {urlValid === true ? '✓ Valid' : urlValid === false ? '✗ Invalid' : 'Validate'}
-                </button>
+        <section className="glass-panel p-8 md:p-12 rounded-xl shadow-2xl relative overflow-hidden transition-all duration-700">
+          <div className="mb-10">
+            <label className="block font-headline text-[10px] tracking-widest text-slate-400 uppercase mb-3 px-1">Target Endpoint / URL</label>
+            <div className="relative flex items-stretch group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                <span className="material-symbols-outlined text-primary-dim text-lg">language</span>
               </div>
-              {urlValid === false && <p className="sc-field-err">Enter a valid URL including https://</p>}
+              <input 
+                className={`w-full bg-surface-container-lowest border rounded-l-lg py-5 pl-12 pr-4 text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-700 font-mono text-sm overflow-hidden relative ${urlValid === false ? 'border-red-500' : urlValid === true ? 'border-green-500' : 'border-white/10'}`} 
+                placeholder="https://api.vortex-security.io/v1/internal" 
+                type="text"
+                value={formData.targetUrl}
+                onChange={e => { setFormData({ ...formData, targetUrl: e.target.value }); setUrlValid(null); }}
+              />
+              <div className="scan-beam opacity-50"></div>
+              <button 
+                className="bg-surface-container-lowest px-8 rounded-r-lg border-y border-r border-white/10 text-secondary text-xs font-bold tracking-widest uppercase transition-all flex items-center gap-2 hover:text-white"
+                onClick={validateUrl}
+              >
+                {urlValid === true ? 'VALID ✅' : urlValid === false ? 'INVALID ❌' : 'VALIDATE'} <span className="material-symbols-outlined text-sm">check_circle</span>
+              </button>
             </div>
+            {urlValid === false && <p className="text-red-500 text-xs mt-2 font-mono">Enter a valid URL or hostname</p>}
+          </div>
 
-            {/* Scan Depth */}
-            <div className="sc-field-group">
-              <label className="sc-label">Scan Depth</label>
-              <div className="sc-option-row">
+          <div className="grid lg:grid-cols-3 gap-12 mb-12">
+            <div className="lg:col-span-1">
+              <label className="block font-headline text-[10px] tracking-widest text-slate-400 uppercase mb-4">Scan Intensity / Depth</label>
+              <div className="flex gap-2">
                 {SCAN_DEPTH_OPTIONS.map(opt => (
-                  <button
+                  <button 
                     key={opt.value}
-                    type="button"
-                    className={`sc-option-pill${formData.scanDepth === opt.value ? ' active' : ''}`}
+                    className={`flex-1 py-3 text-[10px] font-bold tracking-widest uppercase rounded transition-all border ${formData.scanDepth === opt.value ? 'bg-secondary text-on-secondary border-secondary shadow-[0_0_15px_rgba(195,244,0,0.3)]' : 'bg-surface-container-lowest border-white/5 text-slate-500 hover:border-white/20'}`}
                     onClick={() => { setFormData({ ...formData, scanDepth: opt.value }); setActiveStep(1); }}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
-              <p className="sc-field-hint">{depthDesc}</p>
             </div>
 
+            <div className="lg:col-span-2">
+              <label className="block font-headline text-[10px] tracking-widest text-slate-400 uppercase mb-4">Module Selection</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {SCAN_TYPE_OPTIONS.map(opt => {
+                  const isActive = formData.scanType === opt.value;
+                  const iconMap = {
+                    full: 'troubleshoot',
+                    vulnerabilities: 'security',
+                    ssl: 'encrypted',
+                    headers: 'view_list',
+                    recon: 'radar',
+                    custom: 'tune'
+                  };
+                  const colorMap = {
+                    full: 'text-primary',
+                    vulnerabilities: 'text-yellow-400',
+                    ssl: 'text-blue-400',
+                    headers: 'text-purple-400',
+                    recon: 'text-teal-400',
+                    custom: 'text-pink-400'
+                  };
+                  const borderActiveMap = {
+                    full: 'border-primary/60 shadow-[0_0_20px_rgba(143,245,255,0.25)]',
+                    vulnerabilities: 'border-yellow-400/60 shadow-[0_0_20px_rgba(250,204,21,0.25)]',
+                    ssl: 'border-blue-400/60 shadow-[0_0_20px_rgba(96,165,250,0.25)]',
+                    headers: 'border-purple-400/60 shadow-[0_0_20px_rgba(192,132,252,0.25)]',
+                    recon: 'border-teal-400/60 shadow-[0_0_20px_rgba(45,212,191,0.25)]',
+                    custom: 'border-pink-400/60 shadow-[0_0_20px_rgba(244,114,182,0.25)]'
+                  };
+                  const bgActiveMap = {
+                    full: 'bg-primary/5',
+                    vulnerabilities: 'bg-yellow-400/5',
+                    ssl: 'bg-blue-400/5',
+                    headers: 'bg-purple-400/5',
+                    recon: 'bg-teal-400/5',
+                    custom: 'bg-pink-400/5'
+                  };
+
+                  const activeColor = colorMap[opt.value] || 'text-primary';
+                  const activeStyle = borderActiveMap[opt.value] || '';
+                  const activeBg = bgActiveMap[opt.value] || '';
+
+                  return (
+                    <div 
+                      key={opt.value}
+                      className={`bg-surface-container-lowest border p-4 rounded transition-all cursor-pointer group flex flex-col justify-between ${isActive ? `${activeStyle} ${activeBg}` : 'border-white/5 hover:border-white/20 hover:bg-white/5'}`}
+                      onClick={() => { setFormData({ ...formData, scanType: opt.value }); setActiveStep(2); }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`material-symbols-outlined text-xl transition-all duration-300 ${activeColor} ${isActive ? 'opacity-100' : 'opacity-40 group-hover:opacity-70'}`}>
+                          {iconMap[opt.value] || 'settings_input_component'}
+                        </span>
+                        {isActive && <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeColor.replace('text-', 'bg-')}`}></div>}
+                      </div>
+                      <div className="mt-1">
+                        <div className={`text-[10px] font-bold tracking-widest uppercase transition-colors ${isActive ? activeColor : 'text-slate-400 group-hover:text-slate-200'}`}>
+                          {opt.label}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          {/* ── RIGHT column ── */}
-          <div className="sc-right">
-
-            {/* Scan Type */}
-            <div className="sc-field-group">
-              <label className="sc-label">Scan Type</label>
-              <div className="sc-type-grid">
-                {SCAN_TYPE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`sc-type-btn${formData.scanType === opt.value ? ' active' : ''}`}
-                    onClick={() => { setFormData({ ...formData, scanType: opt.value }); setActiveStep(2); }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="sc-field-hint">Selected: {typeLabel}</p>
-            </div>
-
-            {/* Launch CTA */}
-            <button
-              type="button"
-              className="sc-launch-btn"
+          <div className="flex flex-col items-center">
+            <button 
+              className="relative group cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSubmit}
-              disabled={loading || activeScan?.status === 'running'}
+              disabled={loading || activeScan?.status === 'running' || activeScan?.status === 'queued'}
             >
-              {loading ? (
-                <><span className="sc-spinner" /> Queuing Scan…</>
-              ) : activeScan?.status === 'running' ? (
-                <><span className="sc-spinner" /> Scan In Progress…</>
-              ) : (
-                <>&nbsp; Start Security Scan &nbsp;</>
-              )}
+              <div 
+                className="absolute -inset-2 rounded-xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500"
+                style={{ backgroundColor: '#c3f400', backgroundImage: 'none' }}
+              ></div>
+              <div 
+                className="relative flex items-center justify-center gap-4 px-12 py-6 rounded-xl text-[#002d2d] font-headline font-black text-xl tracking-[0.2em] transition-transform active:scale-95 shadow-[0_0_30px_rgba(195,244,0,0.4)] min-w-[360px]"
+                style={{ backgroundColor: '#c3f400', backgroundImage: 'none' }}
+              >
+                {loading ? 'INITIALIZING...' : activeScan?.status === 'running' || activeScan?.status === 'queued' ? 'SCAN IN PROGRESS' : 'START SECURITY SCAN'}
+                <span className="material-symbols-outlined text-3xl font-black">{loading || activeScan?.status === 'running' || activeScan?.status === 'queued' ? 'sync' : 'play_arrow'}</span>
+              </div>
             </button>
+            <p className="mt-6 text-[10px] text-slate-500 uppercase tracking-widest font-headline">Scanning restricted to authorized domains only</p>
+          </div>
+        </section>
 
-            {/* System Status */}
-            <div className="sc-status-panel">
-              <p className="sc-status-title">System Status</p>
-              <div className="sc-status-metrics">
-                <div className="sc-status-metric">
-                  <span className="sc-status-val sc-sv-load">{serverLoad}%</span>
-                  <span className="sc-status-lbl">Server Load</span>
-                  <div className="sc-mini-bar">
-                    <div
-                      className="sc-mini-bar-fill"
-                      style={{ width: `${serverLoad}%`, background: serverLoad > 75 ? '#ef4444' : serverLoad > 50 ? '#f59e0b' : '#3b82f6' }}
-                    />
+        {activeScan && (
+          <div className="glass-panel p-8 mt-8 rounded-xl shadow-2xl border border-primary/20">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <p className="text-secondary font-mono text-sm">{activeScan.target}</p>
+                <p className="text-slate-500 text-xs font-mono mt-1">ID: {activeScan.scan_id}</p>
+              </div>
+              <div className="text-primary font-bold uppercase tracking-widest text-xs">
+                {activeScan.status} - {activeScan.phase}
+              </div>
+            </div>
+            
+            <div className="h-2 w-full bg-surface-container-low rounded-full overflow-hidden mb-2 border border-white/5">
+              <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500" style={{ width: `${activeScan.progress}%` }}></div>
+            </div>
+            <div className="text-right text-xs text-primary font-mono">{activeScan.progress}%</div>
+          </div>
+        )}
+
+        {scanResults && (
+          <div className="glass-panel p-8 mt-8 rounded-xl shadow-2xl border border-secondary/20">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-secondary font-headline font-bold text-xl uppercase tracking-widest">Scan Complete</h3>
+                <div className="text-center px-4 py-2 bg-surface-container-low border border-white/10 rounded">
+                  <p className="text-xs text-slate-400 uppercase font-headline tracking-wider mb-1">Security Score</p>
+                  <p className="text-2xl font-mono text-primary">{scanResults.securityScore ?? '—'}</p>
+                </div>
+             </div>
+             
+             {scanResults.findings && scanResults.findings.length > 0 ? (
+                <div className="mt-6">
+                  <h4 className="text-sm font-headline tracking-widest text-slate-400 mb-4 uppercase">Findings ({scanResults.findings.length})</h4>
+                  <div className="space-y-4">
+                    {scanResults.findings.map(f => (
+                      <div key={f.id} className="bg-surface-container-lowest p-4 rounded border border-white/5 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                           <span className={`text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded ${
+                             f.severity === 'critical' ? 'bg-red-500/20 text-red-500 border border-red-500/30' :
+                             f.severity === 'high' ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' :
+                             f.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+                             f.severity === 'low' ? 'bg-green-500/20 text-green-500 border border-green-500/30' :
+                             'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                           }`}>{f.severity}</span>
+                           <span className="text-xs text-slate-500 font-mono">{f.type || '—'}</span>
+                        </div>
+                        <p className="text-sm text-on-surface">{f.title}</p>
+                        <p className="text-xs font-mono text-slate-400">{f.location || '—'}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="sc-status-sep" />
-                <div className="sc-status-metric">
-                  <span className="sc-status-val sc-sv-net">{networkSpeed} <small>Mbps</small></span>
-                  <span className="sc-status-lbl">Network Speed</span>
+             ) : (
+                <div className="mt-6 p-6 text-center border border-secondary/20 rounded bg-secondary/5">
+                   <p className="text-secondary font-mono">✅ No vulnerabilities detected.</p>
                 </div>
-                <div className="sc-status-sep" />
-                <div className="sc-status-metric">
-                  <span className="sc-status-val sc-sv-time">{fmtTimer(scanTimer)}</span>
-                  <span className="sc-status-lbl">Scan Time</span>
-                </div>
+             )}
+          </div>
+        )}
+
+        <section className="globe-container mt-16 glass-panel-heavy border border-white/5">
+          <div className="world-map-bg"></div>
+          <div className="map-radar-sweep"></div>
+          
+          {/* Random animated threat nodes */}
+          <div className="threat-node" style={{ top: '30%', left: '20%' }}></div>
+          <div className="threat-node" style={{ top: '45%', left: '48%', animationDelay: '0.7s' }}></div>
+          <div className="threat-node" style={{ top: '25%', left: '75%', animationDelay: '1.2s' }}></div>
+          <div className="threat-node" style={{ top: '60%', left: '35%', animationDelay: '0.4s' }}></div>
+          <div className="threat-node" style={{ top: '55%', left: '85%', animationDelay: '1.8s' }}></div>
+
+          <div className="absolute bottom-6 left-6 z-20">
+            <div className="threat-monitor-label">
+              <div className="status-dot"></div>
+              <span>GLOBAL THREAT MONITOR: NOMINAL</span>
+            </div>
+          </div>
+
+          <div className="absolute top-6 right-6 font-mono text-[10px] text-primary/40 tracking-[0.2em] z-20">
+            REALTIME_NETWORK_TOPOLOGY_SCAN
+          </div>
+        </section>
+
+        <footer className="mt-12 grid md:grid-cols-3 gap-8 relative z-10">
+          <div className="glass-panel p-6 rounded-lg flex items-center gap-6 border border-white/5">
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90 text-surface-container-low">
+                <circle cx="40" cy="40" fill="none" r="36" stroke="currentColor" strokeWidth="4"></circle>
+                <circle className="text-primary transition-all duration-1000" cx="40" cy="40" fill="none" r="36" stroke="currentColor" strokeDasharray="226" strokeDashoffset={226 - (226 * serverLoad / 100)} strokeWidth="4"></circle>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-lg font-bold font-headline">{serverLoad}%</span>
               </div>
             </div>
+            <div>
+              <div className="text-[10px] font-headline tracking-widest text-slate-400 uppercase mb-1">Server Load</div>
+              <div className="text-sm font-mono text-primary flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                {serverLoad > 80 ? 'Heavy Load' : serverLoad > 50 ? 'Moderate' : 'Optimized'}
+              </div>
+            </div>
+          </div>
 
+          <div className="glass-panel p-6 rounded-lg border border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[10px] font-headline tracking-widest text-slate-400 uppercase">Network Speed</div>
+              <div className="text-sm font-mono text-secondary transition-all">{networkSpeed} Mbps</div>
+            </div>
+            <div className="h-10 w-full overflow-hidden">
+              <svg className="w-full h-full text-secondary opacity-50" preserveAspectRatio="none" viewBox="0 0 200 40">
+                <path d={`M0 20 Q 25 ${40 - networkSpeed/15}, 50 20 T 100 20 T 150 20 T 200 20 T 250 20 T 300 20`} fill="none" stroke="currentColor" strokeWidth="2">
+                  <animateTransform attributeName="transform" type="translate" from="0 0" to="-100 0" dur="2s" repeatCount="indefinite" />
+                </path>
+                <path d={`M0 25 Q 25 ${45 - networkSpeed/10}, 50 25 T 100 25 T 150 25 T 200 25 T 250 25 T 300 25`} fill="none" opacity="0.3" stroke="currentColor" strokeWidth="1">
+                  <animateTransform attributeName="transform" type="translate" from="0 0" to="-100 0" dur="3s" repeatCount="indefinite" />
+                </path>
+              </svg>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6 rounded-lg flex items-center gap-6 border border-white/5">
+            <div className="w-12 h-12 rounded border border-white/5 bg-white/5 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary-dim text-2xl animate-pulse">hourglass_top</span>
+            </div>
+            <div>
+              <div className="text-[10px] font-headline tracking-widest text-slate-400 uppercase mb-1">Elapsed Time</div>
+              <div className="text-xl font-mono text-on-surface tracking-widest">{fmtTimer(scanTimer)}</div>
+            </div>
+          </div>
+        </footer>
+
+        <div className="mt-12 flex justify-between items-center px-4 opacity-30 border-t border-white/5 pt-8">
+          <div className="font-mono text-[8px] text-slate-500 uppercase flex gap-8">
+            <span className="flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-green-500"></span>
+              LATENCY: {latency}ms
+            </span>
+            <span>RX: 0.08ms</span>
+            <span>PKT_LOSS: 0.000%</span>
+          </div>
+          <div className="flex gap-4">
+            <div className="w-12 h-[1px] bg-primary/40"></div>
+            <div className="w-2 h-2 rotate-45 border border-primary/40"></div>
+            <div className="w-12 h-[1px] bg-primary/40"></div>
+          </div>
+          <div className="font-mono text-[8px] text-slate-500">
+            UUID: 8F55-12E1-SENTINEL-X9
           </div>
         </div>
       </div>
-
-      {/* ── Live progress panel ── */}
-      {activeScan && (
-        <div className="sc-progress-card">
-          <div className="sc-progress-header">
-            <div>
-              <p className="sc-progress-target">{activeScan.target}</p>
-              <p className="sc-progress-id">ID: <code>{activeScan.scan_id}</code></p>
-            </div>
-            <span className={`status-pill status-pill--${activeScan.status}`}>
-              {activeScan.status}
-            </span>
-          </div>
-
-          <div className="sc-bar-wrap">
-            <div className="sc-bar-fill" style={{ width: `${activeScan.progress}%` }} />
-          </div>
-          <div className="sc-progress-meta">
-            <span className="sc-progress-phase">⚡ {activeScan.phase}</span>
-            <span className="sc-progress-pct">{activeScan.progress}%</span>
-          </div>
-
-          <div className="sc-phase-stepper">
-            {PHASES.map((p, i) => {
-              const currentIdx = PHASES.indexOf(activeScan.phase);
-              const skippedSet = SKIPPED_PHASES[formData.scanType] || [];
-              const isSkipped  = skippedSet.includes(p);
-              const done       = !isSkipped && i < currentIdx;
-              const active     = !isSkipped && i === currentIdx;
-              return (
-                <div key={p} className={`sc-phase-step${done ? ' done' : active ? ' active' : isSkipped ? ' skipped' : ''}`}>
-                  <div className="sc-phase-dot">{isSkipped ? '⊘' : done ? '✓' : i + 1}</div>
-                  <span className="sc-phase-label">{p}{isSkipped ? <span className="sc-phase-skip-tag">skipped</span> : null}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Results panel ── */}
-      {scanResults && (
-        <div className="sc-results-card">
-          <div className="sc-results-header">
-            <h3>Scan Results</h3>
-            <div className="sc-score-badge">
-              <span className="sc-score-val">{scanResults.securityScore ?? '—'}</span>
-              <span className="sc-score-lbl">Security Score</span>
-            </div>
-          </div>
-
-          <div className="sc-sev-grid">
-            {['critical', 'high', 'medium', 'low', 'info'].map(sev => (
-              <div key={sev} className="sc-sev-tile" style={{ borderColor: severityColor[sev] }}>
-                <span className="sc-sev-count">{vulnCounts[sev] ?? 0}</span>
-                <span className="sc-sev-label">{sev.charAt(0).toUpperCase() + sev.slice(1)}</span>
-              </div>
-            ))}
-          </div>
-
-          {findings.length > 0 ? (
-            <div className="sc-findings-wrap">
-              <h4>Findings ({findings.length})</h4>
-              <table className="sc-findings-tbl">
-                <thead>
-                  <tr>
-                    <th>Severity</th><th>Title</th><th>Type</th><th>Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {findings.map(f => (
-                    <tr key={f.id}>
-                      <td>
-                        <span className="sc-sev-badge" style={{ background: severityColor[f.severity] }}>
-                          {f.severity}
-                        </span>
-                      </td>
-                      <td className="sc-finding-title">{f.title}</td>
-                      <td className="sc-finding-type">{f.type || '—'}</td>
-                      <td><code className="sc-finding-loc">{f.location || '—'}</code></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="sc-no-findings">✅ No vulnerabilities detected.</p>
-          )}
-        </div>
-      )}
-    </section>
+    </main>
   );
 };
 

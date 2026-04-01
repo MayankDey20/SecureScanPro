@@ -16,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import logging
 import time
 import asyncio
+import os
 
 from app.core.supabase_client import init_supabase, close_supabase
 from app.core.config import settings
@@ -185,6 +186,22 @@ async def health_check():
             "cache": "operational",
             "workers": "operational"
         }
+    }
+
+# System Metrics
+@app.get("/api/v1/system/metrics")
+async def system_metrics():
+    """Actual server metrics"""
+    try:
+        load_avg = os.getloadavg()[0]
+        cpu_count = os.cpu_count() or 1
+        server_load = min(100, int((load_avg / cpu_count) * 100))
+    except (AttributeError, OSError):
+        server_load = 50
+        
+    return {
+        "server_load": server_load,
+        "timestamp": time.time()
     }
 
 # Include routers

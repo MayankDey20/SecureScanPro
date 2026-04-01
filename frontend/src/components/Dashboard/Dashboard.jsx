@@ -271,7 +271,7 @@ const Dashboard = () => {
               <p className="db-panel-sub">Detections by day</p>
             </div>
           </div>
-          <WeeklyVulnBars />
+          <WeeklyVulnBars activityData={activityData} />
           <div className="db-weekly-legend">
             <span className="wl-dot" style={{background:'#f97316'}}></span> High &nbsp;
             <span className="wl-dot" style={{background:'#ef4444'}}></span> Critical &nbsp;
@@ -357,65 +357,143 @@ function CountUp({ end, duration = 1600 }) {
 }
 
 function ScanActivityChart({ activityData, allScans }) {
-  // Use real scansByDay from API, fall back to proportional estimate from total
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const containerRef = useRef(null);
   const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   let vals, xlabels;
   if (activityData?.scansByDay?.length > 0) {
-    // Take last 7 data points from real API data
-    const raw    = activityData.scansByDay.slice(-7);
+    const raw = activityData.scansByDay.slice(-7);
     const rawLbl = activityData.labels.slice(-7).map(l => {
       try { return new Date(l + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
       catch { return l; }
     });
-    // Pad to 7 if fewer than 7 days
-    vals    = [...Array(Math.max(0, 7 - raw.length)).fill(0), ...raw];
+    vals = [...Array(Math.max(0, 7 - raw.length)).fill(0), ...raw];
     xlabels = [...rawLbl.slice(0, Math.max(0, 7 - rawLbl.length)).map(() => ''), ...rawLbl];
-    // Replace missing labels with day names
     xlabels = xlabels.map((l, i) => l || days[i]);
   } else {
     const b = allScans || 0;
-    vals    = [b*.08, b*.14, b*.22, b*.18, b*.28, b*.10, b*.06].map(v => Math.max(Math.floor(v), 0));
+    vals = [b*.08, b*.14, b*.22, b*.18, b*.28, b*.10, b*.06].map(v => Math.max(Math.floor(v), 0));
     xlabels = days;
   }
 
   const hasData = vals.some(v => v > 0);
-  const max  = Math.max(...vals, 1);
-  const W = 500, H = 140, px = 32, py = 14;
-  const pts  = vals.map((v,i) => ({ x: px + (i/(vals.length-1))*(W-px*2), y: py + (1-v/max)*(H-py*2) }));
-  const line = pts.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const area = line + ` L${pts[pts.length-1].x},${H-py} L${pts[0].x},${H-py} Z`;
-  const vals2 = vals.map(v => Math.max(v - Math.floor(v*.35), 0));
-  const pts2  = vals2.map((v,i) => ({ x: px + (i/(vals2.length-1))*(W-px*2), y: py + (1-v/max)*(H-py*2) }));
-  const line2 = pts2.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const ylabels = [max, Math.floor(max/2), 0];
+  if (!hasData) return (
+    <div className="sac-empty">
+      <i className="fas fa-satellite-dish" style={{fontSize:'2rem',color:'#334155',marginBottom:'0.5rem'}}></i>
+      <p style={{color:'#475569',fontSize:'0.85rem'}}>Run your first scan to see activity here</p>
+    </div>
+  );
 
-  if (!hasData) {
-    return (
-      <div className="sac-empty">
-        <i className="fas fa-satellite-dish" style={{fontSize:'2rem',color:'#334155',marginBottom:'0.5rem'}}></i>
-        <p style={{color:'#475569',fontSize:'0.85rem'}}>Run your first scan to see activity here</p>
-      </div>
-    );
-  }
+  const max = Math.max(...vals, 1);
+  const W = 500, H = 160, px = 40, py = 20;
+
+  // Projection
+  const pts = vals.map((v, i) => ({
+    x: px + (i / (vals.length - 1)) * (W - px * 2),
+    y: py + (1 - v / max) * (H - py * 2),
+    val: v,
+    label: xlabels[i]
+  }));
+
+  // Bezier Path Helper
+  const getBezierPath = (points) => {
+    if (points.length < 2) return "";
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      const cp1x = p0.x + (p1.x - p0.x) / 2;
+      const cp1y = p0.y;
+      const cp2x = p0.x + (p1.x - p0.x) / 2;
+      const cp2y = p1.y;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+    }
+    return d;
+  };
+
+  const curveLine = getBezierPath(pts);
+  const areaPath = curveLine + ` L ${pts[pts.length - 1].x} ${H - py} L ${pts[0].x} ${H - py} Z`;
+
+  const handleMouseMove = (e) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const chartW = rect.width;
+    const normalizedX = (x / chartW) * W;
+    const idx = Math.round((normalizedX - px) / ((W - px * 2) / (vals.length - 1)));
+    if (idx >= 0 && idx < vals.length) setHoverIndex(idx);
+    else setHoverIndex(null);
+  };
+
+  const ylabels = [max, Math.floor(max / 2), 0];
 
   return (
-    <div className="sac-wrap">
-      <div className="sac-ylabels">{ylabels.map((v,i) => <span key={i}>{v}</span>)}</div>
-      <div className="sac-chart">
-        <svg viewBox={`0 0 ${W} ${H}`} className="sac-svg" preserveAspectRatio="none">
+    <div className="sac-wrap-highfidelity" ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIndex(null)}>
+      <div className="sac-ylabels-cyber">{ylabels.map((v, i) => <span key={i}>{v}</span>)}</div>
+      <div className="sac-chart-cyber">
+        <svg viewBox={`0 0 ${W} ${H}`} className="sac-svg-neon" preserveAspectRatio="none">
           <defs>
-            <linearGradient id="sacGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.3"/>
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur" />
+              <feOffset in="blur" dx="0" dy="0" result="offsetBlur" />
+              <feFlood floodColor="#3b82f6" floodOpacity="0.8" result="offsetColor" />
+              <feComposite in="offsetColor" in2="offsetBlur" operator="in" result="glow" />
+              <feMerge>
+                <feMergeNode in="glow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <linearGradient id="areaGradCyber" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+              <stop offset="60%" stopColor="#8b5cf6" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="transparent" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <path d={area} fill="url(#sacGrad)"/>
-          <path d={line}  fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-          <path d={line2} fill="none" stroke="#8b5cf6" strokeWidth="1.8" strokeDasharray="5,4" strokeLinejoin="round" strokeLinecap="round"/>
-          {pts.map((p,i) => <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#1d4ed8" stroke="#3b82f6" strokeWidth="1.5"/>)}
+
+          {/* Oscilloscope Grid */}
+          <g className="chart-grid-lines">
+            {[0.2, 0.4, 0.6, 0.8].map(fract => (
+               <line key={fract} x1={px} y1={py + fract*(H-py*2)} x2={W-px} y2={py + fract*(H-py*2)} stroke="rgba(143, 245, 255, 0.05)" strokeWidth="1" />
+            ))}
+          </g>
+
+          <path d={areaPath} fill="url(#areaGradCyber)" />
+          <path d={curveLine} fill="none" stroke="#3b82f6" strokeWidth="3" filter="url(#neonGlow)" className="path-reveal-anim" />
+
+          {/* Hover State Beam */}
+          {hoverIndex !== null && (
+            <g className="hover-focus-beam">
+              <line x1={pts[hoverIndex].x} y1={py} x2={pts[hoverIndex].x} y2={H - py} stroke="#8ff5ff" strokeWidth="1" strokeDasharray="4,2" />
+              <circle cx={pts[hoverIndex].x} cy={pts[hoverIndex].y} r="6" fill="#8ff5ff" className="focus-dot-pulse" />
+              <circle cx={pts[hoverIndex].x} cy={pts[hoverIndex].y} r="3" fill="#000" />
+            </g>
+          )}
+
+          {/* Points */}
+          {pts.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={hoverIndex === i ? '#8ff5ff' : '#1d4ed8'} />
+          ))}
         </svg>
-        <div className="sac-xlabels">{xlabels.map((d,i) => <span key={i}>{d}</span>)}</div>
+
+        {/* Floating Tooltip */}
+        {hoverIndex !== null && (
+          <div 
+            className="sac-tooltip-cyber"
+            style={{ 
+              left: `${(pts[hoverIndex].x / W) * 100}%`,
+              top: `${(pts[hoverIndex].y / H) * 100}%`
+            }}
+          >
+            <div className="tt-point-label">{pts[hoverIndex].label}</div>
+            <div className="tt-point-value">
+              <span className="text-secondary">{pts[hoverIndex].val}</span>
+              <span className="text-[8px] ml-1 opacity-50">SCANS</span>
+            </div>
+          </div>
+        )}
+
+        <div className="sac-xlabels-cyber">{xlabels.map((d, i) => <span key={i} className={hoverIndex === i ? 'active' : ''}>{d}</span>)}</div>
       </div>
     </div>
   );
@@ -442,26 +520,74 @@ function ScoreDonut({ score }) {
   );
 }
 
-function WeeklyVulnBars() {
-  const data = [
-    {c:'#f97316',h:68,label:null},
-    {c:'#ec4899',h:82,label:null},
-    {c:'#f97316',h:52,label:null},
-    {c:'#facc15',h:90,label:'Peak'},
-    {c:'#ef4444',h:76,label:null},
-    {c:'#22c55e',h:58,label:null},
-    {c:'#64748b',h:42,label:null}
-  ];
+function WeeklyVulnBars({ activityData }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
   const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  
+  let data = [];
+  if (activityData?.vulnerabilitiesByDay?.length > 0) {
+    const raw = activityData.vulnerabilitiesByDay.slice(-7);
+    data = raw.map((v, i) => {
+      const total = Object.values(v).reduce((a, b) => a + (Number(b) || 0), 0);
+      let color = '#22c55e'; // Green (Safe)
+      let severity = 'Safe';
+      
+      if (v.critical > 0) { color = '#ef4444'; severity = 'Critical'; }
+      else if (v.high > 0) { color = '#f97316'; severity = 'High'; }
+      else if (v.medium > 0) { color = '#facc15'; severity = 'Medium'; }
+      else if (v.low > 0) { color = '#3b82f6'; severity = 'Low'; }
+
+      return { 
+        c: color, 
+        h: total > 0 ? Math.min(15 + (total * 8), 100) : 8, 
+        total, 
+        v,
+        severity 
+      };
+    });
+    // Pad to 7 days
+    while (data.length < 7) {
+      data.unshift({ c: 'rgba(255,255,255,0.03)', h: 5, total: 0, v: {}, severity: 'None' });
+    }
+  } else {
+    // Fallback/Loading state
+    data = Array(7).fill(0).map(() => ({ c: 'rgba(255,255,255,0.03)', h: 5, total: 0, v: {}, severity: 'None' }));
+  }
+
   return (
-    <div className="wvb-wrap">
-      {data.map((b,i) => (
-        <div key={i} className="wvb-col">
-          {b.label && <span className="wvb-top-label">{b.label}</span>}
-          <div className="wvb-track">
-            <div className="wvb-fill" style={{height:`${b.h}%`, background:b.c}}></div>
+    <div className="wvb-wrap-cyber">
+      {data.map((b, i) => (
+        <div 
+          key={i} 
+          className={`wvb-col-cyber ${hoverIdx === i ? 'active' : ''}`}
+          onMouseEnter={() => setHoverIdx(i)}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          <div className="wvb-track-cyber">
+            <div 
+              className="wvb-fill-cyber" 
+              style={{ 
+                height: `${b.h}%`, 
+                background: b.c,
+                boxShadow: b.total > 0 ? `0 0 15px ${b.c}44` : 'none'
+              }}
+            >
+              {b.total > 0 && <div className="wvb-glow" style={{ background: b.c }}></div>}
+            </div>
           </div>
-          <span className="wvb-day">{days[i]}</span>
+          <span className="wvb-day-cyber">{days[i]}</span>
+          
+          {hoverIdx === i && b.total > 0 && (
+            <div className="wvb-tooltip-cyber">
+              <div className="wvb-tt-severity" style={{ color: b.c }}>{b.severity} Risk</div>
+              <div className="wvb-tt-stats">
+                {b.v.critical > 0 && <span>CRIT: {b.v.critical}</span>}
+                {b.v.high > 0 && <span>HIGH: {b.v.high}</span>}
+                {b.v.medium > 0 && <span>MED: {b.v.medium}</span>}
+                <div className="wvb-tt-total mt-1 border-t border-white/10 pt-1">Total: {b.total}</div>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

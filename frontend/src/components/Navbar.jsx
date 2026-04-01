@@ -72,10 +72,10 @@ const Navbar = () => {
           </li>
         </ul>
         <div className="nav-actions">
-          <button className="btn-icon" id="notificationBtn">
+          <Link to="/settings" className="btn-icon" id="notificationBtn">
             <i className="fas fa-bell"></i>
             <span className="badge">3</span>
-          </button>
+          </Link>
           <Link to="/settings" className="btn-icon">
             <i className="fas fa-cog"></i>
           </Link>

@@ -252,6 +252,13 @@ export const aiAPI = {
   },
 };
 
+export const systemAPI = {
+  getMetrics: async () => {
+    const response = await apiClient.get('/system/metrics');
+    return response.data;
+  },
+};
+
 export const integrationsAPI = {
   list: async () => {
     const response = await apiClient.get('/notifications/integrations');

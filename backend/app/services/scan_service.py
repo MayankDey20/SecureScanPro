@@ -206,6 +206,7 @@ class ScanService:
                     target,
                     crawl_data=crawl_result,
                     auth_config=auth_config,
+                    depth=depth,
                 ))
             elif name == "service":
                 tasks.append(scanner.scan(

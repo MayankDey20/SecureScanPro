@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilities (
     
     -- Remediation
     recommendation TEXT,
-    references TEXT[],
+    "references" TEXT[],
     
     -- Status tracking
     status VARCHAR(50) DEFAULT 'open', -- open, confirmed, false_positive, accepted_risk, remediated
@@ -231,7 +231,7 @@ CREATE TABLE IF NOT EXISTS threats (
     exploit_urls TEXT[],
     
     -- References
-    references JSONB,
+    "references" JSONB,
     
     -- Source tracking
     source VARCHAR(50), -- nvd, mitre, etc.

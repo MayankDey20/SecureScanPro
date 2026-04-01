@@ -91,7 +91,7 @@ async def start_scan(
         scan_id = str(uuid.uuid4())
         new_scan = {
             "id": scan_id,
-            "url": scan_data.target,      # original NOT NULL column
+            "url": scan_data.target,      # Some db schemas still require url
             "target": scan_data.target,   # added via migration
             "scan_type": scan_data.scan_type,
             "status": "queued",

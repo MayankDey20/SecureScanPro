@@ -8,7 +8,7 @@ celery_app = Celery(
     "securescan",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.scan_tasks"]
+    include=["app.tasks.scan_tasks", "app.tasks.ml_tasks", "app.tasks.scheduled_tasks"]
 )
 
 celery_app.conf.update(

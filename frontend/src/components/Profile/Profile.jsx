@@ -34,10 +34,10 @@ const Profile = () => {
     try {
       const updated = await usersAPI.updateProfile(formData);
       updateUser(updated);
-      setMessage('Profile updated successfully!');
-      setTimeout(() => setMessage(''), 3000);
+      setMessage('SUCCESS: Profile synchronized');
+      setTimeout(() => setMessage(''), 5000);
     } catch (error) {
-      setMessage(error.response?.data?.detail || 'Failed to update profile');
+      setMessage(`ERROR: ${error.response?.data?.detail || 'Handshake failed'}`);
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ const Profile = () => {
     setMessage('');
 
     if (passwordData.new_password !== passwordData.confirm_password) {
-      setMessage('New passwords do not match');
+      setMessage('ERROR: Passwords parity mismatch');
       setLoading(false);
       return;
     }
@@ -59,15 +59,15 @@ const Profile = () => {
         passwordData.current_password,
         passwordData.new_password
       );
-      setMessage('Password changed successfully!');
+      setMessage('SUCCESS: Security credentials updated');
       setPasswordData({
         current_password: '',
         new_password: '',
         confirm_password: '',
       });
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 5000);
     } catch (error) {
-      setMessage(error.response?.data?.detail || 'Failed to change password');
+      setMessage(`ERROR: ${error.response?.data?.detail || 'Authorization failed'}`);
     } finally {
       setLoading(false);
     }
@@ -76,90 +76,126 @@ const Profile = () => {
   return (
     <section className="profile-section">
       <div className="section-header">
-        <h1 className="section-title">My Profile</h1>
-        <p className="section-subtitle">Manage your account information</p>
+        <h1 className="section-title">Identity Manager</h1>
+        <p className="section-subtitle">Core account parameters & security credentials</p>
       </div>
 
-      {message && (
-        <div className={`message ${message.includes('success') ? 'success' : 'error'}`}>
-          {message}
-        </div>
-      )}
+      <div className="max-w-4xl mx-auto">
+        {message && (
+          <div className={`message ${message.includes('SUCCESS') ? 'success' : 'error'}`}>
+             <span className="material-symbols-outlined align-middle mr-2 text-sm">
+                {message.includes('SUCCESS') ? 'check_circle' : 'warning'}
+             </span>
+             {message}
+          </div>
+        )}
 
-      <div className="profile-container">
-        <div className="profile-card">
-          <h3>Profile Information</h3>
-          <form onSubmit={handleProfileUpdate}>
-            <div className="form-group">
-              <label>Full Name</label>
-              <input
-                type="text"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                placeholder="Your full name"
-              />
-            </div>
+        <div className="profile-container">
+          {/* Profile Card */}
+          <div className="profile-card">
+            <h3>
+              Profile Info
+            </h3>
+            <form onSubmit={handleProfileUpdate}>
+              <div className="form-group">
+                <div className="field-label-wrapper">
+                  <span className="material-symbols-outlined text-sm text-primary">person</span>
+                  <label>Full Name</label>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    placeholder="Enter full name..."
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="your@email.com"
-              />
-            </div>
+              <div className="form-group">
+                <div className="field-label-wrapper">
+                  <span className="material-symbols-outlined text-sm text-primary">alternate_email</span>
+                  <label>Email Address</label>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter email address..."
+                  />
+                </div>
+              </div>
 
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Profile'}
-            </button>
-          </form>
-        </div>
+              <button type="submit" className="btn-update" disabled={loading}>
+                {loading ? 'SYNCING...' : 'Update Identity'}
+              </button>
+            </form>
+          </div>
 
-        <div className="profile-card">
-          <h3>Change Password</h3>
-          <form onSubmit={handlePasswordChange}>
-            <div className="form-group">
-              <label>Current Password</label>
-              <input
-                type="password"
-                value={passwordData.current_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, current_password: e.target.value })
-                }
-                placeholder="••••••••"
-              />
-            </div>
+          {/* Password Card */}
+          <div className="profile-card">
+            <h3>
+              Security
+            </h3>
+            <form onSubmit={handlePasswordChange}>
+              <div className="form-group">
+                <div className="field-label-wrapper">
+                  <span className="material-symbols-outlined text-sm text-secondary">lock</span>
+                  <label>Current Password</label>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="password"
+                    value={passwordData.current_password}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, current_password: e.target.value })
+                    }
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label>New Password</label>
-              <input
-                type="password"
-                value={passwordData.new_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, new_password: e.target.value })
-                }
-                placeholder="••••••••"
-                minLength={6}
-              />
-            </div>
+              <div className="form-group">
+                <div className="field-label-wrapper">
+                  <span className="material-symbols-outlined text-sm text-secondary">key</span>
+                  <label>New Password</label>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="password"
+                    value={passwordData.new_password}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, new_password: e.target.value })
+                    }
+                    placeholder="••••••••"
+                    minLength={6}
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label>Confirm New Password</label>
-              <input
-                type="password"
-                value={passwordData.confirm_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, confirm_password: e.target.value })
-                }
-                placeholder="••••••••"
-              />
-            </div>
+              <div className="form-group">
+                <div className="field-label-wrapper">
+                  <span className="material-symbols-outlined text-sm text-secondary">verified_user</span>
+                  <label>Verify Password</label>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="password"
+                    value={passwordData.confirm_password}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, confirm_password: e.target.value })
+                    }
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
 
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Changing...' : 'Change Password'}
-            </button>
-          </form>
+              <button type="submit" className="btn-update" disabled={loading}>
+                {loading ? 'SECURING...' : 'Revise Credentials'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </section>
@@ -167,4 +203,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

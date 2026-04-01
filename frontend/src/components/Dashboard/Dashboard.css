@@ -298,45 +298,112 @@
 }
 .db-btn-text:hover { text-decoration: underline; }
 
-/* ── SCAN ACTIVITY CHART ── */
+/* ── SCAN ACTIVITY CHART (Upgraded Cyber-UI) ── */
 .db-chart-panel {
   display: flex;
   flex-direction: column;
 }
-.sac-empty {
-  flex: 1;
+.sac-wrap-highfidelity {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  min-height: 140px;
-  color: #334155;
-}
-.sac-wrap {
-  display: flex;
-  gap: .4rem;
+  gap: 1.5rem;
   flex: 1;
+  position: relative;
+  padding: 1rem 0.5rem;
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.03), transparent 70%);
+  border-radius: 12px;
 }
-.sac-ylabels {
+.sac-ylabels-cyber {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-end;
-  padding-right: .35rem;
-  padding-bottom: 18px;
-  font-size: .6rem;
+  padding-bottom: 24px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
   color: #334155;
-  min-width: 22px;
+  min-width: 30px;
 }
-.sac-chart { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.sac-svg   { width: 100%; height: 140px; display: block; }
-.sac-xlabels {
+.sac-chart-cyber { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  min-width: 0; 
+  position: relative;
+}
+.sac-svg-neon { 
+  width: 100%; 
+  height: 160px; 
+  display: block; 
+  overflow: visible;
+}
+.sac-xlabels-cyber {
   display: flex;
   justify-content: space-between;
-  font-size: .6rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
   color: #334155;
-  padding-top: .25rem;
+  padding-top: 0.75rem;
+}
+.sac-xlabels-cyber span {
+  transition: all 0.3s;
+}
+.sac-xlabels-cyber span.active {
+  color: #8ff5ff;
+  text-shadow: 0 0 8px rgba(143, 245, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Tooltip Styles */
+.sac-tooltip-cyber {
+  position: absolute;
+  transform: translate(-50%, -120%);
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(143, 245, 255, 0.3);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 100px;
+}
+.tt-point-label {
+  font-family: var(--font-headline);
+  font-size: 0.6rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+.tt-point-value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 900;
+  color: #f1f5f9;
+  display: flex;
+  align-items: baseline;
+}
+
+/* Animations */
+.path-reveal-anim {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: revealPath 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes revealPath {
+  to { stroke-dashoffset: 0; }
+}
+
+.focus-dot-pulse {
+  animation: focusPulse 1.5s infinite;
+}
+
+@keyframes focusPulse {
+  0% { r: 4; opacity: 0.8; stroke-width: 1; }
+  50% { r: 10; opacity: 0.3; stroke-width: 2; }
+  100% { r: 4; opacity: 0.8; stroke-width: 1; }
 }
 
 .db-chart-footer {
@@ -638,65 +705,112 @@
 }
 @media (max-width: 900px) { .db-bottom-grid { grid-template-columns: 1fr; } }
 
-/* ── Weekly bar chart ── */
+/* ── Weekly Vulnerabilities (Upgraded Cyber-UI) ── */
 .db-weekly-panel {
   display: flex;
   flex-direction: column;
 }
-.wvb-wrap {
+.wvb-wrap-cyber {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: .35rem;
+  gap: 0.5rem;
   flex: 1;
-  min-height: 110px;
-  padding-top: 1.4rem;
+  min-height: 120px;
+  padding: 1.5rem 0.5rem 0.5rem;
   position: relative;
 }
-.wvb-col {
+.wvb-col-cyber {
   display: flex;
   flex-direction: column;
   align-items: center;
   flex: 1;
   position: relative;
-  gap: .2rem;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
 }
-.wvb-top-label {
-  position: absolute;
-  top: -1.15rem;
-  font-size: .59rem;
-  font-weight: 700;
-  color: #fbbf24;
-  white-space: nowrap;
+.wvb-col-cyber.active {
+  transform: translateY(-4px);
 }
-.wvb-track {
+.wvb-track-cyber {
   width: 100%;
-  height: 90px;
-  background: rgba(255,255,255,.04);
-  border-radius: 5px 5px 0 0;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
-.wvb-fill {
+.wvb-fill-cyber {
   width: 100%;
-  border-radius: 5px 5px 0 0;
-  min-height: 3px;
-  transition: height .5s ease;
+  border-radius: 4px;
+  min-height: 4px;
+  transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+  position: relative;
 }
-.wvb-day {
-  font-size: .59rem;
+.wvb-day-cyber {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
   color: #475569;
-  margin-top: .18rem;
+  text-transform: uppercase;
 }
+.active .wvb-day-cyber {
+  color: #f1f5f9;
+}
+
+/* Tooltip for Bars */
+.wvb-tooltip-cyber {
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.6rem;
+  border-radius: 8px;
+  z-index: 20;
+  min-width: 90px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  animation: barToolTip 0.2s ease;
+}
+@keyframes barToolTip {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.wvb-tt-severity {
+  font-family: var(--font-headline);
+  font-size: 0.65rem;
+  font-weight: 900;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.wvb-tt-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #94a3b8;
+}
+.wvb-tt-total {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
 .db-weekly-legend {
   display: flex;
   align-items: center;
-  gap: .3rem;
-  font-size: .68rem;
+  gap: 0.8rem;
+  font-size: 0.65rem;
   color: #475569;
-  margin-top: .7rem;
+  margin-top: 1rem;
   flex-wrap: wrap;
+  padding-left: 0.5rem;
 }
 .wl-dot {
   display: inline-block;

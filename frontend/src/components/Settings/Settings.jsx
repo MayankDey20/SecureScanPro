@@ -12,19 +12,44 @@ const b64urlToBuffer = (b64) => {
   return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
 };
 
+/* ── Cyber UI Components ── */
+const CyberToggle = ({ checked, onChange, label, desc }) => (
+  <div className="setting-item">
+    <div className="setting-item-label">
+      <label>{label}</label>
+      {desc && <p className="setting-item-desc">{desc}</p>}
+    </div>
+    <label className="cyber-toggle">
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <span className="toggle-slider"></span>
+    </label>
+  </div>
+);
+
+const CyberSelect = ({ value, onChange, label, options, desc }) => (
+  <div className="setting-item">
+    <div className="setting-item-label">
+      <label>{label}</label>
+      {desc && <p className="setting-item-desc">{desc}</p>}
+    </div>
+    <select className="cyber-select" value={value} onChange={e => onChange(e.target.value)}>
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  </div>
+);
+
 /* ════════════════════════════════════════
-   Security Tab — PIN + Biometric management
-════════════════════════════════════════ */
-const SecurityTab = ({ userId }) => {
+   Security Section — PIN + Biometric
+   ════════════════════════════════════════ */
+const SecurityCard = ({ userId }) => {
   const [hasPin, setHasPin]           = useState(false);
-  const [pinMode, setPinMode]         = useState(null); // null | 'setup' | 'change'
+  const [pinMode, setPinMode]         = useState(null); 
   const [passkeys, setPasskeys]       = useState([]);
   const [pin, setPin]                 = useState('');
   const [confirm, setConfirm]         = useState('');
-  const [oldPin, setOldPin]           = useState('');
   const [busy, setBusy]               = useState(false);
-  const [bioStatus, setBioStatus]     = useState(null); // null | 'ok' | 'err'
-  const [bioMsg, setBioMsg]           = useState('');
   const [msg, setMsg]                 = useState(null);
   const pinRef = useRef(null);
 
@@ -46,45 +71,20 @@ const SecurityTab = ({ userId }) => {
     } catch { /* ignore */ }
   };
 
-  /* ── PIN ── */
   const handlePinSave = async () => {
     if (!pin.match(/^\d{4,8}$/)) { flash('PIN must be 4–8 digits', false); return; }
-    if (pin !== confirm) { flash('PINs do not match', false); return; }
-    if (pinMode === 'change' && !oldPin.match(/^\d{4,8}$/)) { flash('Enter your current PIN', false); return; }
+    if (pin !== confirm) { flash('PINs parity mismatch', false); return; }
     setBusy(true);
     try {
-      if (pinMode === 'change') {
-        await authAPI.pinVerify(userId, oldPin);
-      }
       await authAPI.pinSetup(userId, pin);
-      flash(hasPin ? 'PIN changed successfully' : 'PIN set successfully');
-      setHasPin(true);
-      setPinMode(null);
-      setPin(''); setConfirm(''); setOldPin('');
+      flash(hasPin ? 'PIN_REVISED' : 'PIN_ESTABLISHED');
+      setHasPin(true); setPinMode(null); setPin(''); setConfirm('');
     } catch (e) {
-      flash(e?.response?.data?.detail || 'PIN operation failed', false);
-    } finally {
-      setBusy(false);
-    }
+      flash('PIN_SET_DENIED', false);
+    } finally { setBusy(false); }
   };
 
-  const handlePinRemove = async () => {
-    if (!window.confirm('Remove your PIN?')) return;
-    setBusy(true);
-    try {
-      await authAPI.pinRemove(userId);
-      flash('PIN removed');
-      setHasPin(false);
-    } catch (e) {
-      flash(e?.response?.data?.detail || 'Failed to remove PIN', false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  /* ── Biometric ── */
   const handleRegisterBiometric = async () => {
-    setBioStatus(null); setBioMsg(''); setBusy(true);
     try {
       const opts = await authAPI.webauthnRegisterBegin(userId);
       const credential = await navigator.credentials.create({
@@ -101,358 +101,102 @@ const SecurityTab = ({ userId }) => {
         attestation_object: b64urlEncode(credential.response.attestationObject),
         client_data_json:  b64urlEncode(credential.response.clientDataJSON),
       });
-      setBioStatus('ok');
-      setBioMsg('Biometric registered! You can now use it to log in.');
-      flash('Biometric registered successfully');
+      flash('BIO_IDENTITY_LINKED');
       await load();
     } catch (err) {
-      const m = err?.name === 'NotAllowedError'
-        ? 'Prompt cancelled'
-        : err?.response?.data?.detail || err?.message || 'Registration failed';
-      setBioStatus('err'); setBioMsg(m);
-      flash(m, false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleRemovePasskey = async (credId) => {
-    if (!window.confirm('Remove this passkey?')) return;
-    try {
-      await authAPI.deletePasskey(userId, credId);
-      flash('Passkey removed');
-      setPasskeys(prev => prev.filter(p => p.id !== credId));
-    } catch {
-      flash('Failed to remove passkey', false);
+      flash('HANDSHAKE_FAILED', false);
     }
   };
 
   return (
-    <div className="settings-group">
-      <h3>Security &amp; Authentication</h3>
-      <p className="settings-hint">
-        Set up a PIN or biometric (Touch ID / Face ID / Windows Hello) so you can log in
-        without typing your password every time.
-      </p>
+    <div className="settings-card">
+      <h3>Access Security</h3>
+      <div className="sec-section-header mb-6 items-center gap-4">
+        <span className="material-symbols-outlined text-2xl text-secondary">dialpad</span>
+        <div className="flex-1">
+          <label className="text-[10px] font-pixel text-slate-500 uppercase">PIN Authentication</label>
+          <div className="text-xs font-mono text-primary mt-1">{hasPin ? 'ENCRYPTED_PIN_ACTIVE' : 'NO_PIN_DETECTED'}</div>
+        </div>
+        <button className="btn-cyber-action" onClick={() => { setPinMode('setup'); setTimeout(() => pinRef.current?.focus(), 50); }}>
+          {hasPin ? 'REVISE' : 'ESTABLISH'}
+        </button>
+      </div>
 
-      {msg && (
-        <div className={`integrations-msg ${msg.ok ? 'integrations-msg--ok' : 'integrations-msg--err'}`}>
-          {msg.ok ? '✓' : '✕'} {msg.text}
+      {pinMode && (
+        <div className="bg-black/20 p-6 rounded-xl border border-white/5 grid gap-4 mb-8">
+           <div className="flex justify-between items-center bg-white/5 p-3 rounded">
+              <label className="text-[8px] font-pixel text-slate-500 uppercase">Input PIN</label>
+              <input ref={pinRef} type="password" inputMode="numeric" maxLength={8} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} className="bg-transparent text-right text-primary font-mono outline-none w-24" />
+           </div>
+           <div className="flex justify-between items-center bg-white/5 p-3 rounded">
+              <label className="text-[8px] font-pixel text-slate-500 uppercase">Verify PIN</label>
+              <input type="password" inputMode="numeric" maxLength={8} value={confirm} onChange={e => setConfirm(e.target.value.replace(/\D/g, ''))} className="bg-transparent text-right text-primary font-mono outline-none w-24" />
+           </div>
+           <div className="flex justify-end gap-2 mt-2">
+              <button className="btn-sm btn-secondary" onClick={() => setPinMode(null)}>Abort</button>
+              <button className="btn-sm btn-primary" onClick={handlePinSave} disabled={busy}>Commit</button>
+           </div>
         </div>
       )}
 
-      {/* ── PIN Section ── */}
-      <div className="sec-section">
-        <div className="sec-section-header">
-          <span className="sec-section-icon">🔑</span>
-          <div>
-            <strong>PIN Login</strong>
-            <p className="sec-section-sub">
-              {hasPin ? 'A PIN is set. You can use it to log in quickly.' : 'No PIN set yet.'}
-            </p>
-          </div>
-          <div className="sec-section-actions">
-            {!hasPin && (
-              <button className="btn-sm btn-primary" onClick={() => { setPinMode('setup'); setTimeout(() => pinRef.current?.focus(), 50); }}>
-                Set PIN
-              </button>
-            )}
-            {hasPin && (
-              <>
-                <button className="btn-sm btn-secondary" onClick={() => { setPinMode('change'); setTimeout(() => pinRef.current?.focus(), 50); }}>
-                  Change
-                </button>
-                <button className="btn-sm btn-danger" onClick={handlePinRemove} disabled={busy}>
-                  Remove
-                </button>
-              </>
-            )}
-          </div>
+      <div className="sec-section-header items-center gap-4 border-t border-white/5 pt-6">
+        <span className="material-symbols-outlined text-2xl text-primary">fingerprint</span>
+        <div className="flex-1">
+          <label className="text-[10px] font-pixel text-slate-500 uppercase">Biometric Mapping</label>
+          <div className="text-xs font-mono text-primary mt-1">{passkeys.length > 0 ? `${passkeys.length}_ID_VECTORS` : 'NO_ID_MAPPING'}</div>
         </div>
-
-        {pinMode && (
-          <div className="sec-pin-form">
-            {pinMode === 'change' && (
-              <div className="setting-item">
-                <label>Current PIN</label>
-                <input type="password" inputMode="numeric" maxLength={8}
-                  value={oldPin} onChange={e => setOldPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Current PIN" className="sec-pin-input" />
-              </div>
-            )}
-            <div className="setting-item">
-              <label>{pinMode === 'change' ? 'New PIN' : 'PIN'} (4–8 digits)</label>
-              <input ref={pinRef} type="password" inputMode="numeric" maxLength={8}
-                value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="••••" className="sec-pin-input" />
-            </div>
-            <div className="setting-item">
-              <label>Confirm PIN</label>
-              <input type="password" inputMode="numeric" maxLength={8}
-                value={confirm} onChange={e => setConfirm(e.target.value.replace(/\D/g, ''))}
-                placeholder="••••" className="sec-pin-input"
-                onKeyDown={e => e.key === 'Enter' && handlePinSave()} />
-            </div>
-            <div className="sec-pin-form-actions">
-              <button className="btn-secondary btn-sm" onClick={() => { setPinMode(null); setPin(''); setConfirm(''); setOldPin(''); }}>
-                Cancel
-              </button>
-              <button className="btn-primary btn-sm" onClick={handlePinSave} disabled={busy}>
-                {busy ? 'Saving…' : pinMode === 'change' ? 'Change PIN' : 'Set PIN'}
-              </button>
-            </div>
-          </div>
-        )}
+        <button className="btn-cyber-action" onClick={handleRegisterBiometric}>LINK</button>
       </div>
 
-      {/* ── Biometric Section ── */}
-      <div className="sec-section">
-        <div className="sec-section-header">
-          <span className="sec-section-icon">☝</span>
-          <div>
-            <strong>Biometric Login</strong>
-            <p className="sec-section-sub">
-              {passkeys.length > 0
-                ? `${passkeys.length} passkey(s) registered. Use fingerprint or Face ID to log in.`
-                : 'No biometric registered yet.'}
-            </p>
-          </div>
-          <button className="btn-sm btn-primary" onClick={handleRegisterBiometric} disabled={busy}>
-            {passkeys.length > 0 ? '+ Add Another' : 'Register'}
-          </button>
+      {msg && (
+        <div className={`mt-6 text-center text-[8px] font-pixel tracking-widest ${msg.ok ? 'text-primary' : 'text-red-500'}`}>
+          {msg.text}
         </div>
-
-        {bioMsg && (
-          <p className={`sec-bio-msg${bioStatus === 'ok' ? ' ok' : ' err'}`}>{bioMsg}</p>
-        )}
-
-        {passkeys.length > 0 && (
-          <div className="sec-passkey-list">
-            {passkeys.map((pk, i) => (
-              <div key={pk.id || i} className="sec-passkey-row">
-                <span className="sec-passkey-icon">🔐</span>
-                <div className="sec-passkey-info">
-                  <strong>{pk.name || `Passkey ${i + 1}`}</strong>
-                  <span>{pk.created_at ? new Date(pk.created_at).toLocaleDateString() : 'Registered'}</span>
-                </div>
-                <button className="btn-sm btn-danger" onClick={() => handleRemovePasskey(pk.id)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Password note ── */}
-      <div className="sec-section sec-section--note">
-        <span className="sec-section-icon">🔒</span>
-        <p className="settings-hint" style={{ margin: 0 }}>
-          Password changes and email MFA are managed through <strong>Supabase Auth</strong>.
-        </p>
-      </div>
+      )}
     </div>
   );
 };
 
-// ── Integrations Tab ──────────────────────────────────────────────────────────
+/* ── Integrations ── */
 const INTEGRATION_TYPES = [
-  {
-    id: 'slack',
-    label: 'Slack',
-    icon: '💬',
-    fields: [
-      { key: 'webhook_url', label: 'Incoming Webhook URL', placeholder: 'https://hooks.slack.com/services/…', type: 'url' },
-      { key: 'channel', label: 'Channel (optional)', placeholder: '#security-alerts', type: 'text' },
-    ],
-  },
-  {
-    id: 'teams',
-    label: 'Microsoft Teams',
-    icon: '🟣',
-    fields: [
-      { key: 'webhook_url', label: 'Incoming Webhook URL', placeholder: 'https://outlook.office.com/webhook/…', type: 'url' },
-    ],
-  },
-  {
-    id: 'webhook',
-    label: 'Custom Webhook',
-    icon: '🔗',
-    fields: [
-      { key: 'url', label: 'Endpoint URL', placeholder: 'https://your-server.com/webhook', type: 'url' },
-      { key: 'secret', label: 'HMAC Secret (optional)', placeholder: 'Used to sign payloads', type: 'text' },
-    ],
-  },
-  {
-    id: 'email',
-    label: 'Email (SendGrid)',
-    icon: '📧',
-    fields: [
-      { key: 'api_key', label: 'SendGrid API Key', placeholder: 'SG.xxxx', type: 'text' },
-      { key: 'from_email', label: 'From Email', placeholder: 'alerts@yourdomain.com', type: 'email' },
-    ],
-  },
+  { id: 'slack', label: 'Slack', icon: '💬', color: 'text-purple-400' },
+  { id: 'teams', label: 'Teams', icon: '🟣', color: 'text-blue-500' },
+  { id: 'webhook', label: 'Webhook', icon: '🔗', color: 'text-emerald-400' },
+  { id: 'email', label: 'Email', icon: '📧', color: 'text-blue-400' },
 ];
 
-const IntegrationsTab = () => {
+const IntegrationsCard = () => {
   const [integrations, setIntegrations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(null);
-  const [formValues, setFormValues] = useState({});
-  const [formName, setFormName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(null);
-  const [msg, setMsg] = useState(null);
 
-  const flash = (text, ok = true) => {
-    setMsg({ text, ok });
-    setTimeout(() => setMsg(null), 4000);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await integrationsAPI.list();
-      setIntegrations(data);
-    } catch {
-      flash('Failed to load integrations', false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdd = async (typeDef) => {
-    setSaving(true);
-    try {
-      await integrationsAPI.create(typeDef.id, formName || typeDef.label, formValues);
-      flash(`${typeDef.label} integration added!`);
-      setAdding(null);
-      setFormValues({});
-      setFormName('');
-      await load();
-    } catch (e) {
-      flash(e?.response?.data?.detail || 'Failed to save integration', false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Remove "${name}"?`)) return;
-    try {
-      await integrationsAPI.delete(id);
-      flash('Integration removed');
-      setIntegrations(prev => prev.filter(i => i.id !== id));
-    } catch {
-      flash('Failed to remove', false);
-    }
-  };
-
-  const handleTest = async (id) => {
-    setTesting(id);
-    try {
-      const res = await integrationsAPI.test(id);
-      flash(res.message || 'Test sent!', res.status === 'success');
-    } catch (e) {
-      flash(e?.response?.data?.detail || 'Test failed', false);
-    } finally {
-      setTesting(null);
-    }
-  };
-
-  const typeDef = INTEGRATION_TYPES.find(t => t.id === adding);
-
-  if (loading) return <div className="integrations-loading">Loading integrations…</div>;
+  useEffect(() => { integrationsAPI.list().then(setIntegrations); }, []);
 
   return (
-    <div className="integrations-tab">
-      {msg && (
-        <div className={`integrations-msg ${msg.ok ? 'integrations-msg--ok' : 'integrations-msg--err'}`}>
-          {msg.ok ? '✓' : '✕'} {msg.text}
-        </div>
-      )}
-
-      {integrations.length > 0 && (
-        <div className="integrations-list">
-          <h4>Active Integrations</h4>
-          {integrations.map(i => {
-            const def = INTEGRATION_TYPES.find(t => t.id === i.type);
-            return (
-              <div key={i.id} className="integration-row">
-                <span className="integration-row__icon">{def?.icon || '🔌'}</span>
-                <div className="integration-row__info">
-                  <strong>{i.name}</strong>
-                  <span className="integration-row__type">{i.type}</span>
-                </div>
-                <div className="integration-row__actions">
-                  <button className="btn-sm btn-secondary" onClick={() => handleTest(i.id)} disabled={testing === i.id}>
-                    {testing === i.id ? 'Sending…' : 'Test'}
-                  </button>
-                  <button className="btn-sm btn-danger" onClick={() => handleDelete(i.id, i.name)}>
-                    Remove
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {!adding ? (
-        <div className="integrations-add-grid">
-          <h4>Add Integration</h4>
-          <div className="integration-type-grid">
-            {INTEGRATION_TYPES.map(t => (
-              <button key={t.id} className="integration-type-card"
-                onClick={() => { setAdding(t.id); setFormValues({}); setFormName(t.label); }}>
-                <span className="integration-type-card__icon">{t.icon}</span>
-                <span>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="integration-form">
-          <h4>{typeDef?.icon} Configure {typeDef?.label}</h4>
-          <div className="setting-item">
-            <label>Name</label>
-            <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder={`My ${typeDef?.label}`} />
-          </div>
-          {typeDef?.fields.map(f => (
-            <div key={f.key} className="setting-item">
-              <label>{f.label}</label>
-              <input type={f.type} value={formValues[f.key] || ''}
-                onChange={e => setFormValues(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder={f.placeholder} />
-            </div>
-          ))}
-          <div className="integration-form-actions">
-            <button className="btn-secondary" onClick={() => setAdding(null)}>Cancel</button>
-            <button className="btn-primary" onClick={() => handleAdd(typeDef)} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Integration'}
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="settings-card">
+      <h3>Communication Matrix</h3>
+      <div className="integration-type-grid">
+         {INTEGRATION_TYPES.map(t => {
+           const linked = integrations.find(i => i.type === t.id);
+           return (
+             <div key={t.id} className="integration-type-card hover:translate-y-[-2px]">
+               <span className={`integration-type-card__icon ${t.color}`}>{t.icon}</span>
+               <div className="text-[8px] font-pixel text-slate-500 uppercase tracking-widest mt-1">{t.label}</div>
+               <span className={`status-badge mt-2 ${linked ? 'active' : ''}`}>
+                 {linked ? 'LINKED' : 'VOID'}
+               </span>
+             </div>
+           );
+         })}
+      </div>
     </div>
   );
 };
 
-// ── Main Settings Component ───────────────────────────────────────────────────
-const TABS = ['General', 'Notifications', 'Integrations', 'Security & Auth'];
-
+/* ── Main Dashboard ── */
 const Settings = () => {
   const { user, updateUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('General');
   const [settings, setSettings] = useState({
     theme: 'dark',
-    notifications: {
-      email: true,
-      browser: true,
-      sms: false,
-    },
+    notifications: { email: true, browser: true, sms: false },
     default_scan_depth: 'medium',
     auto_save: true,
   });
@@ -466,27 +210,18 @@ const Settings = () => {
     try {
       const data = await usersAPI.getSettings();
       setSettings(data);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* ignore */ } finally { setLoading(false); }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setMessage('');
     try {
       const updated = await usersAPI.updateSettings(settings);
       setSettings(updated.settings);
       updateUser({ settings: updated.settings });
-      setMessage('Settings saved successfully!');
+      setMessage('SUCCESS: SYS_PARAMS_SYNCED');
       setTimeout(() => setMessage(''), 3000);
-    } catch {
-      setMessage('Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
+    } catch { setMessage('ERROR: SYNC_FAILED'); } finally { setSaving(false); }
   };
 
   const updateSetting = (key, value) => {
@@ -498,104 +233,91 @@ const Settings = () => {
     }
   };
 
-  if (loading) return <div className="loading">Loading settings…</div>;
+  if (loading) return <div className="loading-container"><div className="spinner"></div><span>QUERYING_CONFIG...</span></div>;
 
   return (
     <section className="settings-section">
       <div className="section-header">
-        <h1 className="section-title">Settings</h1>
-        <p className="section-subtitle">Manage your preferences and account settings</p>
+        <h1 className="section-title">Command Center</h1>
+        <p className="section-subtitle">System configuration & operational parameters</p>
       </div>
 
-      {message && (
-        <div className={`message ${message.includes('success') ? 'success' : 'error'}`}>
-          {message}
-        </div>
-      )}
-
-      <div className="settings-container">
-        <div className="settings-tabs">
-          {TABS.map(tab => (
-            <button key={tab} className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}>
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <div className="settings-content">
-
-          {activeTab === 'General' && (
-            <div className="settings-group">
-              <h3>General Settings</h3>
-              <div className="setting-item">
-                <label>Theme</label>
-                <select value={settings.theme} onChange={e => updateSetting('theme', e.target.value)}>
-                  <option value="dark">Dark Mode</option>
-                  <option value="light">Light Mode</option>
-                  <option value="auto">Auto</option>
-                </select>
-              </div>
-              <div className="setting-item">
-                <label>Default Scan Depth</label>
-                <select value={settings.default_scan_depth} onChange={e => updateSetting('default_scan_depth', e.target.value)}>
-                  <option value="shallow">Shallow — Quick scan</option>
-                  <option value="medium">Medium — Standard scan</option>
-                  <option value="deep">Deep — Comprehensive scan</option>
-                </select>
-              </div>
-              <div className="setting-item">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={settings.auto_save}
-                    onChange={e => updateSetting('auto_save', e.target.checked)} />
-                  Auto-save scan configurations
-                </label>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Notifications' && (
-            <div className="settings-group">
-              <h3>Notification Preferences</h3>
-              <div className="setting-item">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={settings.notifications?.email}
-                    onChange={e => updateSetting('notifications.email', e.target.checked)} />
-                  Email notifications
-                </label>
-              </div>
-              <div className="setting-item">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={settings.notifications?.browser}
-                    onChange={e => updateSetting('notifications.browser', e.target.checked)} />
-                  Browser notifications
-                </label>
-              </div>
-              <div className="setting-item">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={settings.notifications?.sms}
-                    onChange={e => updateSetting('notifications.sms', e.target.checked)} />
-                  SMS notifications
-                </label>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Integrations' && <IntegrationsTab />}
-
-          {activeTab === 'Security & Auth' && (
-            <SecurityTab userId={user?.id} />
-          )}
-
-        </div>
-
-        {activeTab !== 'Integrations' && activeTab !== 'Security & Auth' && (
-          <div className="settings-actions">
-            <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Settings'}
-            </button>
+      <div className="max-w-6xl mx-auto">
+        {message && (
+          <div className={`mb-12 p-6 rounded-xl font-pixel text-[10px] text-center border ${message.includes('SUCCESS') ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+            {message}
           </div>
         )}
+
+        <div className="settings-grid">
+          {/* General Card */}
+          <div className="settings-card">
+            <h3>Operational Base</h3>
+            <CyberSelect 
+              label="UI Theme Layer" 
+              desc="System visual core synchronization"
+              value={settings.theme} 
+              onChange={v => updateSetting('theme', v)}
+              options={[
+                { value: 'dark', label: 'VOID_PROTOCOL (DARK)' },
+                { value: 'light', label: 'PRISM_ARRAY (LIGHT)' },
+                { value: 'auto', label: 'AUTO_SYNC' }
+              ]}
+            />
+            <CyberSelect 
+              label="Inspection Depth" 
+              desc="Baseline recursive scan density"
+              value={settings.default_scan_depth} 
+              onChange={v => updateSetting('default_scan_depth', v)}
+              options={[
+                { value: 'shallow', label: 'L1_SUPERFICIAL' },
+                { value: 'medium', label: 'L2_BALANCED' },
+                { value: 'deep', label: 'L3_HEAVY_SCAN' }
+              ]}
+            />
+            <CyberToggle 
+              label="State Persistence" 
+              desc="Auto-commit vector configurations"
+              checked={settings.auto_save} 
+              onChange={v => updateSetting('auto_save', v)} 
+            />
+          </div>
+
+          {/* Notifications Card */}
+          <div className="settings-card">
+            <h3>Alerting Vectors</h3>
+            <CyberToggle 
+              label="Secure Relay (Email)" 
+              desc="Push alerts to verified SMTP channel"
+              checked={settings.notifications?.email} 
+              onChange={v => updateSetting('notifications.email', v)} 
+            />
+            <CyberToggle 
+              label="Overlay Push (Browser)" 
+              desc="OS-level notification broadcast"
+              checked={settings.notifications?.browser} 
+              onChange={v => updateSetting('notifications.browser', v)} 
+            />
+            <CyberToggle 
+              label="Mobile Dispatch (SMS)" 
+              desc="Critical cellular override alerts"
+              checked={settings.notifications?.sms} 
+              onChange={v => updateSetting('notifications.sms', v)} 
+            />
+          </div>
+
+          {/* Security Card */}
+          <SecurityCard userId={user?.id} />
+
+          {/* Integrations Card */}
+          <IntegrationsCard />
+        </div>
+
+        <div className="mt-12 flex justify-center">
+           <button className="btn-update min-w-[300px]" onClick={handleSave} disabled={saving}>
+             {saving ? 'SYNCING_PARAMS...' : 'COMMIT ALL CHANGES'}
+           </button>
+        </div>
       </div>
     </section>
   );
