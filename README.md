@@ -1,174 +1,103 @@
-# SecureScanPro
+# SecureScan Pro
 
-<p align="center">
-  <strong>A Comprehensive Web Security Scanning & Threat Intelligence Platform</strong>
-</p>
+A Comprehensive Web Security Scanning & Threat Intelligence Platform
 
-> **Legal Notice:** Only scan systems you own or have explicit written permission to test. Unauthorized scanning may violate local laws and terms of service.
+Legal Notice: Only scan systems you own or have explicit written permission to test. Unauthorized scanning may violate local laws and terms of service.
 
----
+## Project Overview
 
-## 📖 Project Overview
+SecureScan Pro is an advanced, distributed web vulnerability scanner and threat intelligence platform. It provides organizations and security professionals with a unified dashboard to proactively discover, analyze, and remediate security flaws across their web infrastructure.
 
-**SecureScanPro** is an advanced, distributed web vulnerability scanner and threat intelligence platform. It provides organizations and security professionals with a unified dashboard to proactively discover, analyze, and remediate security flaws across their web infrastructure. 
+By combining active vulnerability scanning with machine learning-powered threat intelligence and real-time reporting, SecureScan Pro offers a holistic view of an asset's security posture.
 
-By combining active vulnerability scanning with machine learning-powered threat intelligence and real-time reporting, SecureScanPro offers a holistic view of an asset's security posture.
+## Interface & Features
 
----
+### Interactive Dashboard
+Visualizes security posture, historical trends, and high-risk vulnerabilities tracking over time.
 
-## ✨ Key Features
+(add image of main dashboard)
 
-### 🛡️ Comprehensive Vulnerability Scanning
-- **Dynamic Application Security Testing (DAST):** Automated crawling and mapping of target surfaces.
-- **Multi-Vector Scan Modules:**
-  - **Vulnerability Scanner:** Detects SQLi, XSS, SSRF, CSRF, Path Traversal, and more.
-  - **SSL/TLS Scanner:** Analyzes certificate validity, cipher strength, and protocol versions.
-  - **Network & Port Scanner:** Port discovery and service fingerprinting.
-  - **Header & Auth Scanners:** Validates security headers (CSP, HSTS, CORS) and checks authentication mechanisms.
-  - **Nuclei Integration:** Runs customizable, template-based vulnerability scans.
-  - **Reconnaissance:** Uncovers tech stacks, CMS fingerprints, and directory structures.
+### Real-Time Scan Execution
+Watch scans progress in real-time on the frontend via WebSocket streaming. A distributed task queue built on Celery and Redis handles concurrent, long-running heavy scans without blocking the application.
 
-### 🧠 AI & Machine Learning Threat Intelligence
-- **ML Threat Scoring:** Evaluates scan results against machine learning models to predict exploitability and prioritize remediation.
-- **Symptom Checker:** Interactive AI-driven utility to diagnose and contextualize bizarre system behaviors or logs.
-- **Threat Feed Integration:** Cross-references findings with the latest CVEs and threat intelligence databases.
+(add image of active scan progress)
 
-### ⚡ Real-Time Monitoring & Execution
-- **WebSocket Streaming:** Watch scans progress in real-time on the frontend.
-- **Distributed Task Queue:** Built on Celery and Redis to handle concurrent, long-running heavy scans without blocking the API.
-- **Scheduled Scans:** Set up recurring security audits automatically.
+### Comprehensive Vulnerability Scanning
+Automated crawling and mapping of target surfaces using Multi-Vector Scan Modules:
+- Vulnerability Scanner: Detects SQLi, XSS, SSRF, CSRF, Path Traversal, and more.
+- SSL/TLS Scanner: Analyzes certificate validity, cipher strength, and protocol versions.
+- Network & Port Scanner: Port discovery and service fingerprinting.
+- Header & Auth Scanners: Validates security headers (CSP, HSTS, CORS) and checks authentication mechanisms.
+- Nuclei Integration: Runs customizable, template-based vulnerability scans.
 
-### 📊 Analytics & Automated Reporting
-- **Interactive Dashboard:** Visualizes security posture, historical trends, and high-risk vulnerabilities tracking over time.
-- **Automated Report Generation:** Export findings in professional PDF, JSON, or CSV formats customized for both technical and executive audiences.
-- **SLA Tracking:** Monitor time-to-remediate against organizational security policies.
+(add image of scan results and detailed findings)
 
-### 🔒 Enterprise-Grade Access Control
-- **Authentication:** Secure passwordless, OAuth, or email/password logins powered by Supabase Auth.
-- **Role-Based Access Control (RBAC):** Granular permissions supporting multiple tenant roles (Owner, Admin, Auditor, Guest).
+### AI & Machine Learning Threat Intelligence
+Evaluates scan results against machine learning models to predict exploitability and prioritize remediation. Includes an interactive AI-driven utility to diagnose and contextualize system behaviors or logs.
 
-### 🔔 Smart Notifications
-- Automated alerts sent via Email, Slack, Microsoft Teams, or custom Webhooks when new critical vulnerabilities are detected.
+(add image of threat analysis and AI symptom checker)
 
----
+### Automated Reporting
+Export findings in professional PDF, JSON, or CSV formats customized for both technical and executive audiences.
 
-## 🛠️ Technology Stack
+(add image of generated PDF report)
 
-We engineered SecureScanPro using a modern, scalable, and modular stack:
+### Enterprise-Grade Access Control
+Secure authentication powered by Supabase Auth with Role-Based Access Control (RBAC) supporting multiple tenant roles (Owner, Admin, Auditor, Guest).
 
-### Frontend
-- **Framework:** React 18 & Vite
-- **Styling UI:** Custom CSS & Component Modules
-- **State & Data:** Supabase JS Client, React Context API
-- **Charts:** Chart.js for analytics visualization
-- **Hosting:** Netlify / NGINX
+(add image of user profiles and role management)
 
-### Backend & Core Services
-- **Framework:** FastAPI (Python 3.11)
-- **Concurrency:** Uvicorn & AsyncIO for high-performance API handling
-- **WebSockets:** FastAPI WebSockets for real-time client-server communication
-- **Task Brokers:** Celery + Redis for asynchronous, distributed task execution
-- **Machine Learning:** Scikit-Learn / Custom Python ML pipelines
-- **Hosting:** Railway (API & Celery Workers)
+## Technology Stack
 
-### Data Layer
-- **Primary Database:** PostgreSQL (Hosted on Supabase)
-- **Storage:** Supabase Storage (for Reports & Uploads)
-- **Migrations:** Pure SQL migrations managed by custom setup scripts
+- Frontend: React, Vite, Tailwind CSS
+- Backend: FastAPI (Python), WebSockets
+- Async Workers: Celery, Redis
+- Database & Auth: Supabase (PostgreSQL)
+- Security Engines: Custom Python scanners, Nuclei integration
 
-### Infrastructure & DevOps
-- **Containerization:** Docker & Docker Compose
-- **Reverse Proxy:** Nginx
-- **CI/CD:** Multi-environment deployment configs (`netlify.toml`, `railway.toml`)
+## Local Development Setup
 
----
+Follow these steps to initialize the application on your local machine for evaluation or usage.
 
-## 🏗️ System Architecture
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Docker and Docker Compose
+- Supabase account (for database and authentication configuration)
 
-1. **Client (React):** Authenticates securely via Supabase Auth and talks to the FastAPI backend over REST (`/api/v1/`).
-2. **API (FastAPI):** Validates requests, enforces RBAC, and writes scan configurations to the PostgreSQL database.
-3. **Queue (Redis + Celery):** The backend dispatches heavy scanning tasks to Redis. 
-4. **Workers (Python/Celery):** Background workers pick up tasks, execute rigorous network/web scanning modules (e.g., Nuclei, Nmap, custom HTTP spiders), and apply Machine Learning models to calculate threat intelligence scores.
-5. **Real-Time Feed (WebSockets + Redis Pub/Sub):** Workers publish progress events back to Redis, which the FastAPI WebSocket manager broadcasts to the React client instantly.
+### 1. Environment Configuration
+- In the `backend` directory, copy `.env.example` to `.env` and fill in your Supabase URL, Service Role Key, and Redis credentials.
+- In the `frontend` directory, configure your `.env` to point to the local FastAPI instance and provide the Supabase public keys.
 
----
-
-## 🚀 Getting Started (Local Development)
-
-**Prerequisites:** 
-- Docker & Docker Compose
-- A Supabase Project (for DB & Auth)
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/MayankDey20/SecureScanPro.git
-   cd SecureScanPro
-   ```
-
-2. **Environment Configuration:**
-   Copy the example environment file and fill in your Supabase credentials:
-   ```bash
-   cp .env.example .env
-   # Add your SUPABASE_URL, SUPABASE_KEY, REDIS_URL, etc.
-   ```
-
-3. **Database Setup:**
-   Run the Supabase migrations available in the `/migrations/` folder to set up your tables, row-level security (RLS), and RBAC schema.
-   ```bash
-   ./setup-supabase.sh
-   ```
-
-4. **Launch the Stack:**
-   ```bash
-   docker compose up --build -d
-   ```
-
-5. **Access the Application:**
-   - **Frontend:** `http://localhost:3000`
-   - **Backend API Docs (Swagger):** `http://localhost:8000/docs`
-
-To view logs for background workers and services:
+### 2. Start Infrastructure
+Start the Redis container required for Celery task queuing using Docker Compose:
 ```bash
-docker compose logs -f
+docker-compose up -d redis
 ```
 
----
-
-## 📁 Repository Structure
-
-```text
-.
-├── backend/                  # Python API and Celery Workers
-│   ├── app/
-│   │   ├── api/v1/           # REST endpoints (auth, scans, reports, ml, etc.)
-│   │   ├── core/             # Configuration, RBAC, WebSocket manager
-│   │   ├── models/           # DB schemas and Pydantic validators
-│   │   ├── scanners/         # Core vulnerability scanning logic (Nuclei, SSL, Network, etc.)
-│   │   ├── services/         # Business logic (AI tracking, PDF reports, Threat Intelligence)
-│   │   └── tasks/            # Asynchronous Celery & scheduled tasks
-│   ├── migrations/           # Supabase SQL schema definitions
-│   └── ml_models/            # Serialized ML threat intelligence models
-├── frontend/                 # React UI Application
-│   ├── src/
-│   │   ├── components/       # Pages (Dashboard, Scanner, Threat Intelligence, Analytics)
-│   │   ├── contexts/         # React Context (AuthContext)
-│   │   └── services/         # API hooks and Supabase configuration
-├── docs/                     # Extended documentation (API, Architecture, Security)
-└── docker-compose.yml        # Local orchestration
+### 3. Initialize Backend Services
+Navigate to the `backend` directory, install the Python dependencies, and start the FastAPI server:
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
----
+In a separate terminal within the `backend` directory, activate the environment and start the Celery worker to process scans:
+```bash
+cd backend
+source .venv/bin/activate
+celery -A app.celery_worker.celery_app worker --loglevel=info
+```
 
-## 📖 Extended Documentation
+### 4. Start Frontend Interface
+Navigate to the `frontend` directory, install node modules, and start the Vite development server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- [System Architecture](docs/ARCHITECTURE.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Security Notice](docs/SECURITY.md)
-- [API Reference](docs/API.md)
-
----
-
-## 📄 License & Terms
-
-This project is licensed under the MIT License. 
-By utilizing SecureScanPro, you agree to exclusively use the software for educational, research, and authorized security auditing purposes.
+The application interface will be accessible via the local address provided by the Vite server (typically `http://localhost:5173`).
