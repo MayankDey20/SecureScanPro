@@ -101,3 +101,12 @@ npm run dev
 ```
 
 The application interface will be accessible via the local address provided by the Vite server (typically `http://localhost:5173`).
+
+## Deployment Limitations & Security Policy
+
+This application is strictly designed for local and internal network execution. Public cloud deployment (e.g., Vercel, Railway, Heroku) is inherently incompatible and restricted for the following critical reasons:
+
+1. Provider Acceptable Use Policies (AUP): Almost all Platform-as-a-Service (PaaS) providers explicitly prohibit outbound port scanning, vulnerability probing, and active enumeration traffic. The nature of the scanning modules (such as Nuclei) will automatically trigger network intrusion detection systems and immediately suspend the hosting account.
+2. Severe Operational Risk: Hosting an active vulnerability scanner on the public internet without immense, enterprise-grade access control creates a critical vulnerability. If compromised, the platform transforms into a sophisticated botnet node capable of launching targeted attacks at scale.
+3. Network Proximity Requirements: To accurately assess internal applications, microservices, and staging endpoints, the core scanning engine and worker nodes must reside securely within the same private network (VPC or local LAN) as the target applications.
+4. Intensive Resource Allocation: The distributed background workers (Celery) executing parallel asynchronous tasks place substantial demand on compute, RAM, and internal message brokering (Redis), which ephemeral cloud containers are not provisioned to handle consistently.
