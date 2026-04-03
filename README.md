@@ -15,12 +15,10 @@ By combining active vulnerability scanning with machine learning-powered threat 
 ### Interactive Dashboard
 Visualizes security posture, historical trends, and high-risk vulnerabilities tracking over time.
 
-(add image of main dashboard)
 
 ### Real-Time Scan Execution
 Watch scans progress in real-time on the frontend via WebSocket streaming. A distributed task queue built on Celery and Redis handles concurrent, long-running heavy scans without blocking the application.
 
-(add image of active scan progress)
 
 ### Comprehensive Vulnerability Scanning
 Automated crawling and mapping of target surfaces using Multi-Vector Scan Modules:
@@ -30,22 +28,17 @@ Automated crawling and mapping of target surfaces using Multi-Vector Scan Module
 - Header & Auth Scanners: Validates security headers (CSP, HSTS, CORS) and checks authentication mechanisms.
 - Nuclei Integration: Runs customizable, template-based vulnerability scans.
 
-(add image of scan results and detailed findings)
 
 ### AI & Machine Learning Threat Intelligence
 Evaluates scan results against machine learning models to predict exploitability and prioritize remediation. Includes an interactive AI-driven utility to diagnose and contextualize system behaviors or logs.
 
-(add image of threat analysis and AI symptom checker)
 
 ### Automated Reporting
 Export findings in professional PDF, JSON, or CSV formats customized for both technical and executive audiences.
 
-(add image of generated PDF report)
-
 ### Enterprise-Grade Access Control
 Secure authentication powered by Supabase Auth with Role-Based Access Control (RBAC) supporting multiple tenant roles (Owner, Admin, Auditor, Guest).
 
-(add image of user profiles and role management)
 
 ## Technology Stack
 
