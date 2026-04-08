@@ -1,4 +1,9 @@
+<p align="center">
+  <img src="docs/assets/Home Page.png" width="100%" alt="SecureScan Pro Hero">
+</p>
+
 # SecureScan Pro
+
 
 A Comprehensive Web Security Scanning & Threat Intelligence Platform
 
@@ -16,8 +21,18 @@ By combining active vulnerability scanning with machine learning-powered threat 
 Visualizes security posture, historical trends, and high-risk vulnerabilities tracking over time.
 
 
+<p align="center">
+  <img src="docs/assets/Dashboard.png" width="90%" alt="Interactive Dashboard">
+</p>
+
+
 ### Real-Time Scan Execution
 Watch scans progress in real-time on the frontend via WebSocket streaming. A distributed task queue built on Celery and Redis handles concurrent, long-running heavy scans without blocking the application.
+
+
+<p align="center">
+  <img src="docs/assets/Scanner Page.png" width="90%" alt="Real-Time Scan Execution">
+</p>
 
 
 ### Comprehensive Vulnerability Scanning
@@ -29,15 +44,39 @@ Automated crawling and mapping of target surfaces using Multi-Vector Scan Module
 - Nuclei Integration: Runs customizable, template-based vulnerability scans.
 
 
+<p align="center">
+  <img src="docs/assets/Results Page.png" width="90%" alt="Comprehensive Scan Results">
+</p>
+
+
 ### AI & Machine Learning Threat Intelligence
 Evaluates scan results against machine learning models to predict exploitability and prioritize remediation. Includes an interactive AI-driven utility to diagnose and contextualize system behaviors or logs.
+
+
+<p align="center">
+  <img src="docs/assets/Threat Intel Page.png" width="48%" alt="Threat intelligence">
+  <img src="docs/assets/AI Symptom Checker Page.png" width="48%" alt="AI Symptom Checker">
+</p>
 
 
 ### Automated Reporting
 Export findings in professional PDF, JSON, or CSV formats customized for both technical and executive audiences.
 
+
+<p align="center">
+  <img src="docs/assets/Reports Page.png" width="48%" alt="Reports Dashboard">
+  <img src="docs/assets/Downloaded CSV Report.png" width="48%" alt="Exported Report Content">
+</p>
+
+
 ### Enterprise-Grade Access Control
 Secure authentication powered by Supabase Auth with Role-Based Access Control (RBAC) supporting multiple tenant roles (Owner, Admin, Auditor, Guest).
+
+<p align="center">
+  <img src="docs/assets/Sign Up Page.png" width="32%" alt="Auth Flow">
+  <img src="docs/assets/Profile Settings.png" width="32%" alt="Profile Management">
+  <img src="docs/assets/General Settings.png" width="32%" alt="System Settings">
+</p>
 
 
 ## Technology Stack
